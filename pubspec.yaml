@@ -11,12 +11,8 @@ dependencies:
     sdk: flutter
   flutter_localizations:
     sdk: flutter
-  fl_chart: ^0.66.2
-  sqflite_common_ffi: 2.3.6
-  sqflite_common_ffi_web: 1.0.1+1
-
     
-  # قاعدة البيانات
+  # قاعدة البيانات - فقط sqflite العادي
   sqflite: ^2.3.0
   path: ^1.8.3
   
@@ -24,22 +20,23 @@ dependencies:
   provider: ^6.1.1
   
   # التنسيق والواجهات
-  intl: 0.20.2
+  intl: ^0.19.0
   flutter_svg: ^2.0.9
   
   # الرسوم البيانية
+  fl_chart: ^0.66.2
   
   # التقويم
   table_calendar: ^3.0.9
   
   # الإشعارات
-  flutter_local_notifications: ^19.4.0
-  timezone: ^0.10.1
+  flutter_local_notifications: ^16.3.0
+  timezone: ^0.9.2
   
   # التصدير والمشاركة
   pdf: ^3.10.7
-  excel: ^4.0.2
-  share_plus: ^11.1.0
+  # excel: ^4.0.2  # احذف هذا مؤقتاً - قد يسبب مشاكل
+  share_plus: ^7.2.1
   path_provider: ^2.1.1
   
   # الأيقونات
@@ -48,7 +45,15 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^6.0.0
+  flutter_lints: ^3.0.0
 
 flutter:
   uses-material-design: true
+  
+  # إضافة الخطوط إذا كنت تستخدمها
+  # fonts:
+  #   - family: Cairo
+  #     fonts:
+  #       - asset: fonts/Cairo-Regular.ttf
+  #       - asset: fonts/Cairo-Bold.ttf
+  #         weight: 700

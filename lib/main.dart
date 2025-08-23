@@ -6,30 +6,39 @@ import 'screens/home_screen.dart';
 import 'utils/app_colors.dart';
 import 'helpers/database_helper.dart';
 import 'providers/transaction_provider.dart';
-import 'package:sqflite_common_ffi/sqflite_ffi.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:sqflite_common_ffi/sqflite_ffi.dart';
-import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
-
+import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // تهيئة قاعدة البيانات حسب المنصة
   if (!kIsWeb) {
-    // تهيئة قاعدة البيانات على Desktop و Mobile
-    sqfliteFfiInit();
-    databaseFactory = databaseFactoryFfi;
-
-    // تهيئة قاعدة البيانات الرئيسية
-    await DatabaseHelper.instance.database;
+    // للموبايل (iOS & Android) - استخدم sqflite العادي
+    if (defaultTargetPlatform == TargetPlatform.iOS || 
+        defaultTargetPlatform == TargetPlatform.android) {
+      // تهيئة قاعدة البيانات للموبايل
+      await DatabaseHelper.instance.database;
+    } 
+    // للديسكتوب (Windows, macOS, Linux)
+    else {
+      try {
+        // استخدم sqflite_common_ffi للديسكتوب فقط
+        final sqfliteFfiInit = await _initDesktopDatabase();
+        if (sqfliteFfiInit != null) {
+          await DatabaseHelper.instance.database;
+        }
+      } catch (e) {
+        print("Desktop database initialization failed: $e");
+      }
+    }
   } else {
-    // على Web: يمكن ترك قاعدة البيانات فارغة أو استخدام Sembast/Hive
+    // على Web: يمكن ترك قاعدة البيانات فارغة
     print("تشغيل على الويب: قاعدة البيانات غير متوفرة");
   }
 
   // إجبار الوضع العمودي فقط
-  SystemChrome.setPreferredOrientations([
+  await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
@@ -37,6 +46,22 @@ void main() async {
   runApp(const MyApp());
 }
 
+// دالة منفصلة لتهيئة قاعدة البيانات للديسكتوب
+Future<bool?> _initDesktopDatabase() async {
+  try {
+    // تحميل ديناميكي للمكتبة فقط عند الحاجة
+    if (defaultTargetPlatform == TargetPlatform.windows ||
+        defaultTargetPlatform == TargetPlatform.linux ||
+        defaultTargetPlatform == TargetPlatform.macOS) {
+      // هنا يمكن إضافة كود خاص بالديسكتوب إذا لزم
+      return null; // نرجع null لأننا لن ندعم الديسكتوب حالياً
+    }
+    return null;
+  } catch (e) {
+    print("Desktop database error: $e");
+    return null;
+  }
+}
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
