@@ -20,18 +20,18 @@ class _BudgetScreenState extends State<BudgetScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: const Color(0xFFF5F2E9), // خلفية بيج فاتح
       appBar: AppBar(
         title: const Text(
           'الميزانيات',
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
-            color: Colors.black87,
+            color: Color(0xFF473D33), // بني داكن
           ),
         ),
         centerTitle: true,
-        backgroundColor: Colors.white,
+        backgroundColor: const Color(0xFFF5F2E9), // خلفية بيج فاتح
         elevation: 0,
         actions: [
           IconButton(
@@ -39,7 +39,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: AppColors.primary,
+                color: const Color(0xFFC5D300), // أخضر فاتح
                 borderRadius: BorderRadius.circular(12),
               ),
               child: const Icon(
@@ -76,7 +76,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
                   'إدارة الميزانيات الشهرية',
                   style: TextStyle(
                     fontSize: 16,
-                    color: Colors.black54,
+                    color: Color(0xFF473D33), // بني داكن
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -84,7 +84,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
                   'تابع مصروفاتك والتزم بميزانيتك',
                   style: TextStyle(
                     fontSize: 12,
-                    color: Colors.grey[600],
+                    color: const Color(0xFF473D33).withOpacity(0.6), // بني داكن مع شفافية
                   ),
                 ),
                 const SizedBox(height: 24),
@@ -109,7 +109,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
                           borderRadius: BorderRadius.circular(20),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.05),
+                              color: const Color(0xFF473D33).withOpacity(0.05), // بني داكن مع شفافية
                               blurRadius: 10,
                               offset: const Offset(0, 4),
                             ),
@@ -155,7 +155,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
                                               style: const TextStyle(
                                                 fontSize: 16,
                                                 fontWeight: FontWeight.bold,
-                                                color: Colors.black87,
+                                                color: Color(0xFF473D33), // بني داكن
                                               ),
                                             ),
                                             const SizedBox(height: 4),
@@ -163,7 +163,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
                                               category.type == 'expense' ? 'مصروف' : 'التزام',
                                               style: TextStyle(
                                                 fontSize: 12,
-                                                color: Colors.grey[600],
+                                                color: const Color(0xFF473D33).withOpacity(0.6), // بني داكن مع شفافية
                                               ),
                                             ),
                                           ],
@@ -180,14 +180,14 @@ class _BudgetScreenState extends State<BudgetScreen> {
                                               style: const TextStyle(
                                                 fontSize: 16,
                                                 fontWeight: FontWeight.bold,
-                                                color: Colors.black87,
+                                                color: Color(0xFF473D33), // بني داكن
                                               ),
                                             ),
                                             Text(
                                               'الميزانية',
                                               style: TextStyle(
                                                 fontSize: 12,
-                                                color: Colors.grey[600],
+                                                color: const Color(0xFF473D33).withOpacity(0.6), // بني داكن مع شفافية
                                               ),
                                             ),
                                           ],
@@ -199,14 +199,14 @@ class _BudgetScreenState extends State<BudgetScreen> {
                                             vertical: 8,
                                           ),
                                           decoration: BoxDecoration(
-                                            color: AppColors.primary.withOpacity(0.1),
+                                            color: const Color(0xFFC5D300).withOpacity(0.1), // أخضر فاتح مع شفافية
                                             borderRadius: BorderRadius.circular(20),
                                           ),
                                           child: const Text(
                                             'تحديد ميزانية',
                                             style: TextStyle(
                                               fontSize: 12,
-                                              color: AppColors.primary,
+                                              color: Color(0xFFC5D300), // أخضر فاتح
                                               fontWeight: FontWeight.bold,
                                             ),
                                           ),
@@ -229,7 +229,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
                                               'المصروف: ${AppConstants.formatMoney(spent)}',
                                               style: TextStyle(
                                                 fontSize: 12,
-                                                color: Colors.grey[600],
+                                                color: const Color(0xFF473D33).withOpacity(0.6), // بني داكن مع شفافية
                                               ),
                                             ),
                                             Text(
@@ -249,7 +249,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
                                           borderRadius: BorderRadius.circular(8),
                                           child: LinearProgressIndicator(
                                             value: progress > 1 ? 1 : progress,
-                                            backgroundColor: Colors.grey[200],
+                                            backgroundColor: const Color(0xFF473D33).withOpacity(0.1), // بني داكن مع شفافية
                                             valueColor: AlwaysStoppedAnimation<Color>(
                                               _getProgressColor(progress),
                                             ),
@@ -263,7 +263,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
                                           'المتبقي: ${AppConstants.formatMoney((budget.amount - spent).clamp(0, double.infinity))}',
                                           style: TextStyle(
                                             fontSize: 12,
-                                            color: Colors.grey[600],
+                                            color: const Color(0xFF473D33).withOpacity(0.6), // بني داكن مع شفافية
                                           ),
                                         ),
                                       ],
@@ -276,8 +276,8 @@ class _BudgetScreenState extends State<BudgetScreen> {
                                         padding: const EdgeInsets.all(12),
                                         decoration: BoxDecoration(
                                           color: progress > 1
-                                              ? AppColors.error.withOpacity(0.1)
-                                              : AppColors.warning.withOpacity(0.1),
+                                              ? Colors.red.withOpacity(0.1)
+                                              : Colors.orange.withOpacity(0.1),
                                           borderRadius: BorderRadius.circular(12),
                                         ),
                                         child: Row(
@@ -288,8 +288,8 @@ class _BudgetScreenState extends State<BudgetScreen> {
                                                   : Icons.warning_amber_rounded,
                                               size: 20,
                                               color: progress > 1
-                                                  ? AppColors.error
-                                                  : AppColors.warning,
+                                                  ? Colors.red
+                                                  : Colors.orange,
                                             ),
                                             const SizedBox(width: 12),
                                             Expanded(
@@ -301,8 +301,8 @@ class _BudgetScreenState extends State<BudgetScreen> {
                                                   fontSize: 12,
                                                   fontWeight: FontWeight.w500,
                                                   color: progress > 1
-                                                      ? AppColors.error
-                                                      : AppColors.warning,
+                                                      ? Colors.red
+                                                      : Colors.orange,
                                                 ),
                                               ),
                                             ),
@@ -331,11 +331,11 @@ class _BudgetScreenState extends State<BudgetScreen> {
   Color _getCategoryColor(String type) {
     switch (type) {
       case 'expense':
-        return AppColors.expense;
+        return Colors.red;
       case 'commitment':
-        return AppColors.commitment;
+        return Colors.blue;
       default:
-        return AppColors.textSecondary;
+        return const Color(0xFF473D33); // بني داكن
     }
   }
 
@@ -351,10 +351,10 @@ class _BudgetScreenState extends State<BudgetScreen> {
   }
 
   Color _getProgressColor(double progress) {
-    if (progress > 1) return AppColors.error;
-    if (progress > 0.8) return AppColors.warning;
-    if (progress > 0.6) return Colors.orange;
-    return AppColors.success;
+    if (progress > 1) return Colors.red;
+    if (progress > 0.8) return Colors.orange;
+    if (progress > 0.6) return const Color(0xFFC5D300); // أخضر فاتح
+    return Colors.green;
   }
 
   Future<void> _showAddBudgetDialog(BuildContext context, [String? categoryName]) async {
@@ -371,139 +371,153 @@ class _BudgetScreenState extends State<BudgetScreen> {
       context: context,
       builder: (dialogContext) => Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'تحديد ميزانية جديدة',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+        child: Container(
+          decoration: BoxDecoration(
+            color: const Color(0xFFF5F2E9), // خلفية بيج فاتح
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'تحديد ميزانية جديدة',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF473D33), // بني داكن
+                  ),
                 ),
-              ),
-              const SizedBox(height: 20),
-              
-              if (categoryName == null) ...[
-                DropdownButtonFormField<String>(
-                  value: selectedCategory,
+                const SizedBox(height: 20),
+                
+                if (categoryName == null) ...[
+                  DropdownButtonFormField<String>(
+                    value: selectedCategory,
+                    decoration: InputDecoration(
+                      labelText: 'الفئة',
+                      labelStyle: const TextStyle(color: Color(0xFF473D33)), // بني داكن
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      filled: true,
+                      fillColor: Colors.white,
+                    ),
+                    items: categories.map((cat) => DropdownMenuItem(
+                      value: cat.name,
+                      child: Text(cat.name, style: const TextStyle(color: Color(0xFF473D33))), // بني داكن
+                    )).toList(),
+                    onChanged: (value) => selectedCategory = value,
+                  ),
+                  const SizedBox(height: 16),
+                ] else ...[
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.category_rounded,
+                          color: const Color(0xFFC5D300), // أخضر فاتح
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          categoryName,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w500,
+                            color: Color(0xFF473D33), // بني داكن
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+                
+                TextField(
+                  controller: amountController,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
+                  ],
                   decoration: InputDecoration(
-                    labelText: 'الفئة',
+                    labelText: 'المبلغ الشهري',
+                    labelStyle: const TextStyle(color: Color(0xFF473D33)), // بني داكن
+                    hintText: '0.00',
+                    suffixText: AppConstants.currencySymbol,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                     filled: true,
-                    fillColor: Colors.grey[50],
+                    fillColor: Colors.white,
                   ),
-                  items: categories.map((cat) => DropdownMenuItem(
-                    value: cat.name,
-                    child: Text(cat.name),
-                  )).toList(),
-                  onChanged: (value) => selectedCategory = value,
                 ),
-                const SizedBox(height: 16),
-              ] else ...[
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[50],
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.category_rounded,
-                        color: AppColors.primary,
-                      ),
-                      const SizedBox(width: 12),
-                      Text(
-                        categoryName,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w500,
+                const SizedBox(height: 24),
+                
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(dialogContext),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          side: const BorderSide(color: Color(0xFF473D33)), // بني داكن
+                        ),
+                        child: const Text(
+                          'إلغاء',
+                          style: TextStyle(color: Color(0xFF473D33)), // بني داكن
                         ),
                       ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-              ],
-              
-              TextField(
-                controller: amountController,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
-                ],
-                decoration: InputDecoration(
-                  labelText: 'المبلغ الشهري',
-                  hintText: '0.00',
-                  suffixText: AppConstants.currencySymbol,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  filled: true,
-                  fillColor: Colors.grey[50],
-                ),
-              ),
-              const SizedBox(height: 24),
-              
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.pop(dialogContext),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: const Text('إلغاء'),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () async {
-                        final amount = double.tryParse(amountController.text);
-                        if (amount != null && amount > 0 && selectedCategory != null) {
-                          final budget = BudgetModel(
-                            category: selectedCategory!,
-                            amount: amount,
-                            startDate: DateTime.now(),
-                          );
-                          
-                          await provider.saveBudget(budget);
-                          if (dialogContext.mounted) {
-                            Navigator.pop(dialogContext);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: const Text('تم تحديد الميزانية بنجاح'),
-                                backgroundColor: AppColors.success,
-                                behavior: SnackBarBehavior.floating,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                              ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          final amount = double.tryParse(amountController.text);
+                          if (amount != null && amount > 0 && selectedCategory != null) {
+                            final budget = BudgetModel(
+                              category: selectedCategory!,
+                              amount: amount,
+                              startDate: DateTime.now(),
                             );
+                            
+                            await provider.saveBudget(budget);
+                            if (dialogContext.mounted) {
+                              Navigator.pop(dialogContext);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: const Text('تم تحديد الميزانية بنجاح'),
+                                  backgroundColor: const Color(0xFFC5D300), // أخضر فاتح
+                                  behavior: SnackBarBehavior.floating,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                ),
+                              );
+                            }
                           }
-                        }
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFC5D300), // أخضر فاتح
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text(
+                          'حفظ',
+                          style: TextStyle(color: Colors.white),
                         ),
                       ),
-                      child: const Text(
-                        'حفظ',
-                        style: TextStyle(color: Colors.white),
-                      ),
                     ),
-                  ),
-                ],
-              ),
-            ],
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -524,125 +538,98 @@ class _BudgetScreenState extends State<BudgetScreen> {
       context: context,
       builder: (dialogContext) => Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'تعديل الميزانية',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+        child: Container(
+          decoration: BoxDecoration(
+            color: const Color(0xFFF5F2E9), // خلفية بيج فاتح
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'تعديل الميزانية',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF473D33), // بني داكن
+                  ),
                 ),
-              ),
-              const SizedBox(height: 20),
-              
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.grey[50],
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.category_rounded,
-                      color: AppColors.primary,
-                    ),
-                    const SizedBox(width: 12),
-                    Text(
-                      categoryName,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              
-              TextField(
-                controller: amountController,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
-                ],
-                decoration: InputDecoration(
-                  labelText: 'المبلغ الشهري',
-                  hintText: '0.00',
-                  suffixText: AppConstants.currencySymbol,
-                  border: OutlineInputBorder(
+                const SizedBox(height: 20),
+                
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  filled: true,
-                  fillColor: Colors.grey[50],
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.category_rounded,
+                        color: const Color(0xFFC5D300), // أخضر فاتح
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        categoryName,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w500,
+                          color: Color(0xFF473D33), // بني داكن
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(height: 24),
-              
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.pop(dialogContext),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                const SizedBox(height: 16),
+                
+                TextField(
+                  controller: amountController,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
+                  ],
+                  decoration: InputDecoration(
+                    labelText: 'المبلغ الشهري',
+                    labelStyle: const TextStyle(color: Color(0xFF473D33)), // بني داكن
+                    hintText: '0.00',
+                    suffixText: AppConstants.currencySymbol,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    filled: true,
+                    fillColor: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(dialogContext),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          side: const BorderSide(color: Color(0xFF473D33)), // بني داكن
+                        ),
+                        child: const Text(
+                          'إلغاء',
+                          style: TextStyle(color: Color(0xFF473D33)), // بني داكن
                         ),
                       ),
-                      child: const Text('إلغاء'),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () async {
-                        // حذف الميزانية
-                        final updatedBudget = BudgetModel(
-                          id: budget.id,
-                          category: categoryName,
-                          amount: 0,
-                          startDate: budget.startDate,
-                        );
-                        
-                        await provider.saveBudget(updatedBudget);
-                        if (dialogContext.mounted) {
-                          Navigator.pop(dialogContext);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: const Text('تم حذف الميزانية'),
-                              backgroundColor: AppColors.warning,
-                              behavior: SnackBarBehavior.floating,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            ),
-                          );
-                        }
-                      },
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        side: const BorderSide(color: AppColors.error),
-                      ),
-                      child: const Text(
-                        'حذف',
-                        style: TextStyle(color: AppColors.error),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () async {
-                        final amount = double.tryParse(amountController.text);
-                        if (amount != null && amount > 0) {
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () async {
+                          // حذف الميزانية
                           final updatedBudget = BudgetModel(
                             id: budget.id,
                             category: categoryName,
-                            amount: amount,
+                            amount: 0,
                             startDate: budget.startDate,
                           );
                           
@@ -651,31 +638,71 @@ class _BudgetScreenState extends State<BudgetScreen> {
                             Navigator.pop(dialogContext);
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                content: const Text('تم تحديث الميزانية بنجاح'),
-                                backgroundColor: AppColors.success,
+                                content: const Text('تم حذف الميزانية'),
+                                backgroundColor: Colors.orange,
                                 behavior: SnackBarBehavior.floating,
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                               ),
                             );
                           }
-                        }
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                        },
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          side: const BorderSide(color: Colors.red),
+                        ),
+                        child: const Text(
+                          'حذف',
+                          style: TextStyle(color: Colors.red),
                         ),
                       ),
-                      child: const Text(
-                        'حفظ',
-                        style: TextStyle(color: Colors.white),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          final amount = double.tryParse(amountController.text);
+                          if (amount != null && amount > 0) {
+                            final updatedBudget = BudgetModel(
+                              id: budget.id,
+                              category: categoryName,
+                              amount: amount,
+                              startDate: budget.startDate,
+                            );
+                            
+                            await provider.saveBudget(updatedBudget);
+                            if (dialogContext.mounted) {
+                              Navigator.pop(dialogContext);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: const Text('تم تحديث الميزانية بنجاح'),
+                                  backgroundColor: const Color(0xFFC5D300), // أخضر فاتح
+                                  behavior: SnackBarBehavior.floating,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                ),
+                              );
+                            }
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFC5D300), // أخضر فاتح
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text(
+                          'حفظ',
+                          style: TextStyle(color: Colors.white),
+                        ),
                       ),
                     ),
-                  ),
-                ],
-              ),
-            ],
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),

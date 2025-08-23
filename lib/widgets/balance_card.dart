@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../utils/app_colors.dart';
+import '../utils/app_constants.dart';
 
 class BalanceCard extends StatelessWidget {
   final double balance;
@@ -28,18 +29,11 @@ class BalanceCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            AppColors.primary,
-            AppColors.primary.withBlue(150),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        color: AppColors.darkBrown, // استخدام البني الداكن بدل التدرج
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withOpacity(0.3),
+            color: AppColors.darkBrown.withOpacity(0.3),
             blurRadius: 10,
             offset: const Offset(0, 5),
           ),
@@ -61,13 +55,13 @@ class BalanceCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
+                  color: AppColors.lightGreen.withOpacity(0.3), // أخضر شفاف
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
                   '${(progress * 100).toStringAsFixed(0)}% مصروف',
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: AppColors.lightGreen, // نص أخضر
                     fontSize: 12,
                     fontWeight: FontWeight.bold,
                   ),

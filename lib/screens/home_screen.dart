@@ -1,11 +1,10 @@
-// screens/home_screen.dart
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/services.dart';
 import '../providers/transaction_provider.dart';
+import '../providers/user_provider.dart';
 import '../utils/app_colors.dart';
 import '../models/transaction_model.dart';
 import 'add_transaction.dart';
@@ -14,7 +13,8 @@ import 'reports_screen.dart';
 import 'settings_screen.dart';
 import 'dart:math' as math;
 import '../utils/app_constants.dart';
-
+import 'package:device_info/device_info.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -42,6 +42,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     // تحميل البيانات الأولية
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<TransactionProvider>().loadInitialData();
+      context.read<UserProvider>().loadUserData();
     });
     
     // إعداد التحكم في الرسوم المتحركة
@@ -73,7 +74,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _currentIndex == 0 ? Color(0xFFF8FAFC) : AppColors.background,
+      backgroundColor: _currentIndex == 0 ? AppColors.background : AppColors.background,
       body: IndexedStack(
         index: _currentIndex,
         children: _screens,
@@ -83,7 +84,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           color: Colors.white,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
+              color: AppColors.darkBrown.withOpacity(0.1),
               blurRadius: 16,
               offset: const Offset(0, -4),
             ),
@@ -176,17 +177,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   height: 70,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    gradient: const LinearGradient(
-                      colors: [
-                        Color(0xFF1B5E20),
-                        Color(0xFF2E7D32),
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
+                    color: AppColors.addButton,
                     boxShadow: [
                       BoxShadow(
-                        color: Color(0xFF1B5E20).withOpacity(0.4),
+                        color: AppColors.lightGreen.withOpacity(0.4),
                         blurRadius: 20,
                         offset: const Offset(0, 8),
                       ),
@@ -220,9 +214,22 @@ class DashboardScreen extends StatelessWidget {
 
   // دالة لفتح منصة إحسان
   Future<void> _openEhsanPlatform(BuildContext context) async {
-    const url = 'https://ehsan.sa/';
+    String url;
     
     try {
+      final DeviceInfoPlugin deviceInfo = DeviceInfoPlugin();
+      
+      if (Theme.of(context).platform == TargetPlatform.android) {
+        // للاندرويد
+        url = 'https://play.google.com/store/apps/details?id=sa.gov.sdaia.ehsan';
+      } else if (Theme.of(context).platform == TargetPlatform.iOS) {
+        // للايفون
+        url = 'https://apps.apple.com/us/app/ehsan-%D8%A5%D8%AD%D8%B3%D8%A7%D9%86/id1602515092';
+      } else {
+        // للمنصات الأخرى نستخدم الموقع الافتراضي
+        url = 'https://ehsan.sa/';
+      }
+      
       if (await canLaunchUrl(Uri.parse(url))) {
         await launchUrl(Uri.parse(url));
       } else {
@@ -240,8 +247,8 @@ class DashboardScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SafeArea(
-      child: Consumer<TransactionProvider>(
-        builder: (context, provider, child) {
+      child: Consumer2<TransactionProvider, UserProvider>(
+        builder: (context, provider, userProvider, child) {
           if (provider.isLoading) {
             return const Center(
               child: CircularProgressIndicator(color: AppColors.primary),
@@ -268,42 +275,58 @@ class DashboardScreen extends StatelessWidget {
               children: [
                 const SizedBox(height: 24),
                 
-                // Header with greeting
+                // Header with greeting and user name
                 Row(
                   children: [
-                    const CircleAvatar(
-                      radius: 24,
-                      backgroundColor: AppColors.primary,
-                      child: Text(
-                        'أ',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 18,
-                        ),
-                      ),
+                    // صورة المستخدم (رمزية)
+                    Consumer<UserProvider>(
+                      builder: (context, userProvider, child) {
+                        final firstLetter = userProvider.userName.isNotEmpty 
+                            ? userProvider.userName[0].toUpperCase()
+                            : 'أ';
+                        
+                        return CircleAvatar(
+                          radius: 24,
+                          backgroundColor: AppColors.primary,
+                          child: Text(
+                            firstLetter,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 18,
+                            ),
+                          ),
+                        );
+                      },
                     ),
                     const SizedBox(width: 12),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'مرحباً أحمد 👋',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black87,
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Consumer<UserProvider>(
+                            builder: (context, userProvider, child) {
+                              return Text(
+                                userProvider.welcomeMessage ?? 
+                                'مرحباً، ${userProvider.userName}',
+                                style: TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.textPrimary,
+                                ),
+                              );
+                            },
                           ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          DateFormat('MMMM yyyy', 'ar').format(provider.selectedMonth),
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.black54,
+                          const SizedBox(height: 4),
+                          Text(
+                            DateFormat('MMMM yyyy', 'ar').format(provider.selectedMonth),
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: AppColors.textSecondary,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -318,9 +341,9 @@ class DashboardScreen extends StatelessWidget {
                       child: _buildSummaryCard(
                         title: 'الدخل',
                         amount: summary?.totalIncome ?? 0,
-                        color: Color(0xFFE8F5E9),
+                        color: AppColors.incomeLight,
                         icon: Icons.arrow_downward_rounded,
-                        iconColor: Color(0xFF2E7D32),
+                        iconColor: AppColors.income,
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -331,8 +354,8 @@ class DashboardScreen extends StatelessWidget {
                         title: 'الالتزامات',
                         amount: summary?.totalCommitments ?? 0,
                         percentage: commitmentPercentage,
-                        color: Color(0xFFFFEBEE),
-                        iconColor: Color(0xFFD32F2F),
+                        color: AppColors.commitmentLight,
+                        iconColor: AppColors.commitment,
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -342,9 +365,9 @@ class DashboardScreen extends StatelessWidget {
                       child: _buildDailyExpenseCard(
                         title: 'المصروفات',
                         amount: summary?.totalExpenses ?? 0,
-                        color: Color(0xFFE3F2FD),
+                        color: AppColors.expenseLight,
                         icon: Icons.show_chart_rounded,
-                        iconColor: Color(0xFF1976D2),
+                        iconColor: AppColors.expense,
                       ),
                     ),
                   ],
@@ -353,11 +376,11 @@ class DashboardScreen extends StatelessWidget {
                 const SizedBox(height: 32),
                 
                 // بطاقة التبرع عبر إحسان
-                InkWell(
+                   InkWell(
                   onTap: () => _openEhsanPlatform(context),
                   borderRadius: BorderRadius.circular(20),
-                  splashColor: Colors.white.withOpacity(0.2),
-                  highlightColor: Colors.white.withOpacity(0.1),
+                  splashColor: Color(0xFF013F6D).withOpacity(0.2),
+                  highlightColor: Color(0xFF013F6D).withOpacity(0.1),
                   child: Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(20),
@@ -365,15 +388,15 @@ class DashboardScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(20),
                       gradient: const LinearGradient(
                         colors: [
-                          Color(0xFF4FC3F7),
-                          Color(0xFF4DB6AC),
+                          Color(0xFF013F6D), // اللون الأزرق الداكن من الشعار
+                          Color(0xFF188F7A), // اللون الأخضر من الشعار
                         ],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: Color(0xFF4FC3F7).withOpacity(0.3),
+                          color: Color(0xFF013F6D).withOpacity(0.3),
                           blurRadius: 15,
                           offset: const Offset(0, 6),
                         ),
@@ -381,13 +404,19 @@ class DashboardScreen extends StatelessWidget {
                     ),
                     child: Row(
                       children: [
+                        // شعار إحسان SVG
                         Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
                             color: Colors.white.withOpacity(0.2),
-                            shape: BoxShape.circle,
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                          child: const Icon(Icons.favorite, color: Colors.white, size: 24),
+                          child: SvgPicture.asset(
+                            'assets/images/ehsan-logo.svg', // المسار إلى ملف SVG
+                            width: 32,
+                            height: 32,
+                            color: Colors.white,
+                          ),
                         ),
                         const SizedBox(width: 16),
                         Expanded(
@@ -404,7 +433,7 @@ class DashboardScreen extends StatelessWidget {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                'ما نقص مالٌ من صدقةٍ',
+                                'ما نقص مالٌ من صدقة',
                                 style: TextStyle(
                                   color: Colors.white.withOpacity(0.9),
                                   fontSize: 13,
@@ -418,8 +447,8 @@ class DashboardScreen extends StatelessWidget {
                     ),
                   ),
                 ),
-                
                 const SizedBox(height: 32),
+                
                 
                 // Remaining Balance Section
                 Container(
@@ -429,7 +458,7 @@ class DashboardScreen extends StatelessWidget {
                     borderRadius: BorderRadius.circular(20),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
+                        color: AppColors.darkBrown.withOpacity(0.05),
                         blurRadius: 15,
                         offset: const Offset(0, 5),
                       ),
@@ -443,7 +472,7 @@ class DashboardScreen extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
-                          color: Colors.black87,
+                          color: AppColors.textPrimary,
                         ),
                       ),
                       
@@ -455,10 +484,10 @@ class DashboardScreen extends StatelessWidget {
                           // Amount
                           Text(
                             AppConstants.formatNumber(summary?.balance ?? 0),
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 36,
                               fontWeight: FontWeight.bold,
-                              color: Colors.black87,
+                              color: AppColors.textPrimary,
                             ),
                           ),
                           const SizedBox(width: 8),
@@ -466,7 +495,7 @@ class DashboardScreen extends StatelessWidget {
                             'ريال',
                             style: TextStyle(
                               fontSize: 14,
-                              color: Colors.black54,
+                              color: AppColors.textSecondary,
                             ),
                           ),
                           const Spacer(),
@@ -487,7 +516,7 @@ class DashboardScreen extends StatelessWidget {
                                   child: Center(
                                     child: Text(
                                       '${(remainingPercentage * 100).toStringAsFixed(0)}%',
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontSize: 14,
                                         fontWeight: FontWeight.bold,
                                         color: AppColors.progressGreen,
@@ -515,7 +544,7 @@ class DashboardScreen extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: Colors.black87,
+                        color: AppColors.textPrimary,
                       ),
                     ),
                     InkWell(
@@ -552,7 +581,7 @@ class DashboardScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(20),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
+                          color: AppColors.darkBrown.withOpacity(0.05),
                           blurRadius: 10,
                           offset: const Offset(0, 4),
                         ),
@@ -564,13 +593,13 @@ class DashboardScreen extends StatelessWidget {
                           Icon(
                             Icons.receipt_long_rounded,
                             size: 48,
-                            color: Colors.grey[300],
+                            color: AppColors.textLight,
                           ),
                           const SizedBox(height: 16),
                           Text(
                             'لا توجد عمليات بعد',
                             style: TextStyle(
-                              color: Colors.black54,
+                              color: AppColors.textSecondary,
                               fontSize: 16,
                             ),
                           ),
@@ -606,7 +635,7 @@ class DashboardScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.06),
+            color: AppColors.darkBrown.withOpacity(0.06),
             blurRadius: 12,
             offset: const Offset(0, 6),
           ),
@@ -632,9 +661,9 @@ class DashboardScreen extends StatelessWidget {
               const SizedBox(width: 8),
               Text(
                 title,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 14,
-                  color: Colors.black87,
+                  color: AppColors.textPrimary,
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -645,10 +674,10 @@ class DashboardScreen extends StatelessWidget {
             fit: BoxFit.scaleDown,
             child: Text(
               AppConstants.formatNumber(amount),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
-                color: Colors.black87,
+                color: AppColors.textPrimary,
               ),
             ),
           ),
@@ -657,7 +686,7 @@ class DashboardScreen extends StatelessWidget {
             'ريال',
             style: TextStyle(
               fontSize: 12,
-              color: Colors.black54,
+              color: AppColors.textSecondary,
             ),
           ),
         ],
@@ -679,7 +708,7 @@ class DashboardScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.06),
+            color: AppColors.darkBrown.withOpacity(0.06),
             blurRadius: 12,
             offset: const Offset(0, 6),
           ),
@@ -705,9 +734,9 @@ class DashboardScreen extends StatelessWidget {
               const SizedBox(width: 8),
               Text(
                 title,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 14,
-                  color: Colors.black87,
+                  color: AppColors.textPrimary,
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -716,10 +745,10 @@ class DashboardScreen extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             '${percentage.toStringAsFixed(0)}%',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
-              color: Colors.black87,
+              color: AppColors.textPrimary,
             ),
           ),
           const SizedBox(height: 4),
@@ -727,9 +756,9 @@ class DashboardScreen extends StatelessWidget {
             fit: BoxFit.scaleDown,
             child: Text(
               '${AppConstants.formatNumber(amount)} ريال',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
-                color: Colors.black54,
+                color: AppColors.textSecondary,
               ),
             ),
           ),
@@ -752,7 +781,7 @@ class DashboardScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.06),
+            color: AppColors.darkBrown.withOpacity(0.06),
             blurRadius: 12,
             offset: const Offset(0, 6),
           ),
@@ -779,9 +808,9 @@ class DashboardScreen extends StatelessWidget {
               Expanded(
                 child: Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
-                    color: Colors.black87,
+                    color: AppColors.textPrimary,
                     fontWeight: FontWeight.w500,
                     height: 1.2,
                   ),
@@ -794,10 +823,10 @@ class DashboardScreen extends StatelessWidget {
             fit: BoxFit.scaleDown,
             child: Text(
               AppConstants.formatNumber(amount),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
-                color: Colors.black87,
+                color: AppColors.textPrimary,
               ),
             ),
           ),
@@ -806,7 +835,7 @@ class DashboardScreen extends StatelessWidget {
             'ريال',
             style: TextStyle(
               fontSize: 12,
-              color: Colors.black54,
+              color: AppColors.textSecondary,
             ),
           ),
         ],
@@ -825,7 +854,7 @@ class DashboardScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: AppColors.darkBrown.withOpacity(0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -866,10 +895,10 @@ class DashboardScreen extends StatelessWidget {
                     children: [
                       Text(
                         transaction.category,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
-                          color: Colors.black87,
+                          color: AppColors.textPrimary,
                         ),
                       ),
                       const SizedBox(height: 4),
@@ -877,7 +906,7 @@ class DashboardScreen extends StatelessWidget {
                         transaction.city,
                         style: TextStyle(
                           fontSize: 12,
-                          color: Colors.black54,
+                          color: AppColors.textSecondary,
                         ),
                       ),
                     ],
@@ -893,7 +922,7 @@ class DashboardScreen extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        color: isExpense ? Colors.black87 : AppColors.progressGreen,
+                        color: isExpense ? AppColors.textPrimary : AppColors.progressGreen,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -901,7 +930,7 @@ class DashboardScreen extends StatelessWidget {
                       'ريال',
                       style: TextStyle(
                         fontSize: 10,
-                        color: Colors.black54,
+                        color: AppColors.textSecondary,
                       ),
                     ),
                   ],

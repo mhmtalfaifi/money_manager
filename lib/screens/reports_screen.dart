@@ -552,7 +552,10 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
 
   // الرسم البياني الدائري
   Widget _buildPieChart(MonthlySummary summary) {
-    final data = summary.expensesByCategory.entries.toList();
+  if (summary.expensesByCategory.isEmpty) {
+    return Center(child: Text('لا توجد بيانات'));
+  }
+  final data = summary.expensesByCategory.entries.toList();
     final colors = [
       AppColors.income,
       AppColors.expense,
@@ -588,7 +591,7 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
   }
 
   // الرسم البياني الأفقي
-  Widget _buildBarChart(MonthlySummary summary) {
+Widget _buildBarChart(MonthlySummary summary) {
     final data = summary.expensesByCategory.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
     
@@ -601,27 +604,25 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
             ? 100 
             : topCategories.first.value * 1.2,
         barTouchData: BarTouchData(
+          enabled: true,
           touchTooltipData: BarTouchTooltipData(
-            getTooltipColor: (group) => Colors.black87,
+            // تم إزالة tooltipBgColor في الإصدارات الحديثة
+            // استخدام الطريقة القديمة البسيطة
+            tooltipMargin: 8,
             getTooltipItem: (group, groupIndex, rod, rodIndex) {
               return BarTooltipItem(
-                '${topCategories[groupIndex].key}\n',
-                const TextStyle(color: Colors.white, fontSize: 12),
-                children: [
-                  TextSpan(
-                    text: AppConstants.formatMoney(rod.toY),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
+                '${topCategories[groupIndex].key}: ${AppConstants.formatMoney(rod.toY)}',
+                const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
               );
             },
           ),
         ),
         titlesData: FlTitlesData(
+          show: true,
           leftTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
@@ -673,21 +674,13 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
             barRods: [
               BarChartRodData(
                 toY: entry.value.value,
-                gradient: LinearGradient(
-                  colors: [
-                    AppColors.expense,
-                    AppColors.expense.withOpacity(0.7),
-                  ],
-                  begin: Alignment.bottomCenter,
-                  end: Alignment.topCenter,
-                ),
+                color: AppColors.expense, // استخدام color بدلاً من gradient للتبسيط
                 width: 20,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
+                borderRadius: BorderRadius.circular(4),
               ),
             ],
           );
         }).toList(),
       ),
     );
-  }
-}
+  }}

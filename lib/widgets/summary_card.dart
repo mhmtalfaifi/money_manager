@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../utils/app_colors.dart';
+import '../utils/app_constants.dart';
+import '../utils/app_colors.dart'; // أضفنا استيراد ألوان التطبيق
 
 class SummaryCard extends StatelessWidget {
   final String title;

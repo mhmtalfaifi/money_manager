@@ -1,6 +1,7 @@
 // widgets/transaction_item.dart
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import '../models/transaction_model.dart';
 import '../utils/app_colors.dart';
@@ -11,7 +12,9 @@ class TransactionItem extends StatelessWidget {
   final VoidCallback? onTap;
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
+  final VoidCallback? onLongPress;
   final bool showDate;
+  final EdgeInsets? margin;
 
   const TransactionItem({
     super.key,
@@ -19,7 +22,9 @@ class TransactionItem extends StatelessWidget {
     this.onTap,
     this.onEdit,
     this.onDelete,
+    this.onLongPress,
     this.showDate = false,
+    this.margin,
   });
 
   @override
@@ -30,21 +35,32 @@ class TransactionItem extends StatelessWidget {
 
     Color typeColor = AppColors.getTransactionColor(transaction.type);
     Color lightColor = AppColors.getTransactionLightColor(transaction.type);
-
+    
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: margin ?? const EdgeInsets.only(bottom: 8),
       child: Material(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         child: InkWell(
-          onTap: onTap,
+          onTap: () {
+            if (onTap != null) {
+              HapticFeedback.lightImpact();
+              onTap!();
+            }
+          },
+          onLongPress: () {
+            if (onLongPress != null) {
+              HapticFeedback.mediumImpact();
+              onLongPress!();
+            }
+          },
           borderRadius: BorderRadius.circular(16),
           child: Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: Colors.grey[100]!,
+                color: AppColors.lightBeige.withOpacity(0.5),
                 width: 1,
               ),
             ),
@@ -76,10 +92,10 @@ class TransactionItem extends StatelessWidget {
                           Expanded(
                             child: Text(
                               transaction.description,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
-                                color: Colors.black87,
+                                color: AppColors.textPrimary,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -90,7 +106,7 @@ class TransactionItem extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
-                              color: isIncome ? AppColors.success : Colors.black87,
+                              color: isIncome ? AppColors.success : AppColors.textPrimary,
                             ),
                           ),
                         ],
@@ -117,7 +133,7 @@ class TransactionItem extends StatelessWidget {
                           Icon(
                             Icons.location_on_rounded,
                             size: 12,
-                            color: Colors.grey[400],
+                            color: AppColors.textLight,
                           ),
                           const SizedBox(width: 2),
                           Expanded(
@@ -125,7 +141,7 @@ class TransactionItem extends StatelessWidget {
                               transaction.city,
                               style: TextStyle(
                                 fontSize: 12,
-                                color: Colors.grey[600],
+                                color: AppColors.textSecondary,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -136,7 +152,7 @@ class TransactionItem extends StatelessWidget {
                               DateFormat('d/M').format(transaction.date),
                               style: TextStyle(
                                 fontSize: 12,
-                                color: Colors.grey[500],
+                                color: AppColors.textSecondary,
                               ),
                             ),
                         ],
@@ -147,7 +163,7 @@ class TransactionItem extends StatelessWidget {
                           transaction.notes!,
                           style: TextStyle(
                             fontSize: 11,
-                            color: Colors.grey[600],
+                            color: AppColors.textSecondary,
                             fontStyle: FontStyle.italic,
                           ),
                           maxLines: 1,

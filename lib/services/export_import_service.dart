@@ -5,12 +5,14 @@ import 'dart:convert';
 import 'package:intl/intl.dart';
 import '../models/transaction_model.dart';
 import '../helpers/database_helper.dart';
-import '../utils/app_colors.dart';
-import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:syncfusion_flutter_xlsio/xlsio.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:share_plus/share_plus.dart';
+import '../utils/app_colors.dart';
+import 'package:flutter/material.dart';
+import 'pdf_export_service.dart';
+import 'package:syncfusion_flutter_xlsio/xlsio.dart' as xlsio;
+import 'package:csv/csv.dart';
 
 class ExportImportService {
   static final ExportImportService _instance = ExportImportService._internal();
@@ -19,7 +21,7 @@ class ExportImportService {
 
   DatabaseHelper get _db => DatabaseHelper.instance;
 
-  // ========== تصدير إلى Excel ==========
+  // ========== Export to Excel ==========
 
   Future<String?> exportToExcel({
     DateTime? startDate, 
@@ -29,7 +31,7 @@ class ExportImportService {
     String? transactionType,
   }) async {
     try {
-      // الحصول على البيانات مع الفلترة
+      // Get filtered data
       List<TransactionModel> transactions = await _getFilteredTransactions(
         startDate: startDate,
         endDate: endDate,
@@ -42,30 +44,185 @@ class ExportImportService {
         throw Exception('لا توجد بيانات للتصدير');
       }
 
-      // إنشاء ملف Excel
-      final Workbook workbook = Workbook();
-      final Worksheet sheet = workbook.worksheets[0];
+      // Create Excel file
+      final xlsio.Workbook workbook = xlsio.Workbook();
+      final xlsio.Worksheet sheet = workbook.worksheets[0];
       sheet.name = 'العمليات المالية';
 
-      // إضافة الرؤوس مع التنسيق
+      // Add headers with formatting
       _addExcelHeaders(sheet);
 
-      // إضافة البيانات
+      // Add data
       _addTransactionData(sheet, transactions);
 
-      // إضافة ورقة الملخص
+      // Add summary sheet
       _addSummarySheet(workbook, transactions);
 
-      // إضافة ورقة الإحصائيات
+      // Add statistics sheet
       _addStatisticsSheet(workbook, transactions);
 
-      // حفظ الملف
+      // Save file
       final String filePath = await _saveExcelFile(workbook);
       workbook.dispose();
 
       return filePath;
     } catch (e) {
       throw Exception('فشل في تصدير البيانات: $e');
+    }
+  }
+
+  void _addExcelHeaders(xlsio.Worksheet sheet) {
+    final headers = [
+      'التاريخ', 'الوقت', 'النوع', 'الوصف', 'المبلغ', 
+      'المدينة', 'الفئة', 'متكررة', 'ملاحظات'
+    ];
+    
+    for (int i = 0; i < headers.length; i++) {
+      final xlsio.Range headerCell = sheet.getRangeByIndex(1, i + 1);
+      headerCell.setText(headers[i]);
+      headerCell.cellStyle.backColor = '#4CAF50';
+      headerCell.cellStyle.fontColor = '#FFFFFF';
+      headerCell.cellStyle.bold = true;
+      headerCell.cellStyle.fontSize = 12;
+    }
+    sheet.autoFitColumn(1);
+  }
+
+  void _addTransactionData(xlsio.Worksheet sheet, List<TransactionModel> transactions) {
+    for (int i = 0; i < transactions.length; i++) {
+      final transaction = transactions[i];
+      final row = i + 2;
+      
+      sheet.getRangeByIndex(row, 1).setText(DateFormat('yyyy/MM/dd').format(transaction.date));
+      sheet.getRangeByIndex(row, 2).setText(DateFormat('HH:mm').format(transaction.date));
+      sheet.getRangeByIndex(row, 3).setText(_getTypeLabel(transaction.type));
+      sheet.getRangeByIndex(row, 4).setText(transaction.description);
+      sheet.getRangeByIndex(row, 5).setNumber(transaction.amount);
+      sheet.getRangeByIndex(row, 6).setText(transaction.city);
+      sheet.getRangeByIndex(row, 7).setText(transaction.category);
+      sheet.getRangeByIndex(row, 8).setText(transaction.isRecurring ? 'نعم' : 'لا');
+      sheet.getRangeByIndex(row, 9).setText(transaction.notes ?? '');
+    }
+    
+    // Auto-fit columns
+    for (int i = 1; i <= 9; i++) {
+      sheet.autoFitColumn(i);
+    }
+  }
+
+  void _addSummarySheet(xlsio.Workbook workbook, List<TransactionModel> transactions) {
+    final summarySheet = workbook.worksheets.add();
+    summarySheet.name = 'الملخص';
+    
+    // Headers
+    summarySheet.getRangeByIndex(1, 1).setText('البيان');
+    summarySheet.getRangeByIndex(1, 2).setText('القيمة');
+    
+    // Data
+    final summary = _calculateSummary(transactions);
+    int row = 2;
+    
+    summarySheet.getRangeByIndex(row++, 1).setText('إجمالي الدخل');
+    summarySheet.getRangeByIndex(row-1, 2).setText(summary['totalIncome'].toString());
+    
+    summarySheet.getRangeByIndex(row++, 1).setText('إجمالي المصروفات');
+    summarySheet.getRangeByIndex(row-1, 2).setText(summary['totalExpenses'].toString());
+    
+    summarySheet.getRangeByIndex(row++, 1).setText('إجمالي الالتزامات');
+    summarySheet.getRangeByIndex(row-1, 2).setText(summary['totalCommitments'].toString());
+    
+    summarySheet.getRangeByIndex(row++, 1).setText('الرصيد المتبقي');
+    summarySheet.getRangeByIndex(row-1, 2).setText(summary['balance'].toString());
+    
+    // Format headers
+    for (int i = 1; i <= 2; i++) {
+      final headerCell = summarySheet.getRangeByIndex(1, i);
+      headerCell.cellStyle.backColor = '#2196F3';
+      headerCell.cellStyle.fontColor = '#FFFFFF';
+      headerCell.cellStyle.bold = true;
+    }
+    
+    summarySheet.autoFitColumn(1);
+    summarySheet.autoFitColumn(2);
+  }
+
+  void _addStatisticsSheet(xlsio.Workbook workbook, List<TransactionModel> transactions) {
+    final statsSheet = workbook.worksheets.add();
+    statsSheet.name = 'الإحصائيات';
+    
+    // Category statistics
+    statsSheet.getRangeByIndex(1, 1).setText('الفئة');
+    statsSheet.getRangeByIndex(1, 2).setText('المبلغ');
+    
+    final categoryTotals = _getCategoryTotals(transactions);
+    int row = 2;
+    
+    for (final entry in categoryTotals.entries.take(10)) {
+      statsSheet.getRangeByIndex(row, 1).setText(entry.key);
+      statsSheet.getRangeByIndex(row, 2).setNumber(entry.value);
+      row++;
+    }
+    
+    // City statistics
+    statsSheet.getRangeByIndex(1, 4).setText('المدينة');
+    statsSheet.getRangeByIndex(1, 5).setText('المبلغ');
+    
+    final cityTotals = _getCityTotals(transactions);
+    row = 2;
+    
+    for (final entry in cityTotals.entries.take(10)) {
+      statsSheet.getRangeByIndex(row, 4).setText(entry.key);
+      statsSheet.getRangeByIndex(row, 5).setNumber(entry.value);
+      row++;
+    }
+    
+    // Format headers
+    for (int i = 1; i <= 5; i++) {
+      if (i == 1 || i == 2 || i == 4 || i == 5) {
+        final headerCell = statsSheet.getRangeByIndex(1, i);
+        headerCell.cellStyle.backColor = '#FF9800';
+        headerCell.cellStyle.fontColor = '#FFFFFF';
+        headerCell.cellStyle.bold = true;
+      }
+    }
+    
+    for (int i = 1; i <= 5; i++) {
+      statsSheet.autoFitColumn(i);
+    }
+  }
+
+  Future<String> _saveExcelFile(xlsio.Workbook workbook) async {
+    final directory = await getApplicationDocumentsDirectory();
+    final timestamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
+    final filePath = '${directory.path}/money_manager_export_$timestamp.xlsx';
+    
+    final List<int> bytes = workbook.saveAsStream();
+    final File file = File(filePath);
+    await file.writeAsBytes(bytes);
+    
+    return filePath;
+  }
+
+  // ========== Export to PDF ==========
+
+  Future<String?> exportToPdf({
+    DateTime? startDate, 
+    DateTime? endDate,
+    List<String>? categories,
+    List<String>? cities,
+    String? transactionType,
+  }) async {
+    try {
+      return await PdfExportService.instance.exportToPdfWithFilters(
+        startDate: startDate,
+        endDate: endDate,
+        categories: categories,
+        cities: cities,
+        transactionType: transactionType,
+        db: _db,
+      );
+    } catch (e) {
+      throw Exception('فشل في تصدير PDF: $e');
     }
   }
 
@@ -76,144 +233,71 @@ class ExportImportService {
     List<String>? cities,
     String? transactionType,
   }) async {
-    List<TransactionModel> transactions = await _db.getAllTransactions();
-
-    // فلترة حسب التاريخ
-    if (startDate != null || endDate != null) {
-      transactions = transactions.where((t) {
-        if (startDate != null && t.date.isBefore(startDate)) return false;
-        if (endDate != null && t.date.isAfter(endDate.add(const Duration(days: 1)))) return false;
-        return true;
-      }).toList();
+    try {
+      List<TransactionModel> transactions = await _db.getAllTransactions();
+      
+      // Apply filters
+      if (startDate != null) {
+        transactions = transactions.where((t) => 
+            t.date.isAfter(startDate.subtract(const Duration(days: 1)))).toList();
+      }
+      
+      if (endDate != null) {
+        transactions = transactions.where((t) => 
+            t.date.isBefore(endDate.add(const Duration(days: 1)))).toList();
+      }
+      
+      if (categories != null && categories.isNotEmpty) {
+        transactions = transactions.where((t) => 
+            categories.contains(t.category)).toList();
+      }
+      
+      if (cities != null && cities.isNotEmpty) {
+        transactions = transactions.where((t) => 
+            cities.contains(t.city)).toList();
+      }
+      
+      if (transactionType != null && transactionType != 'all') {
+        transactions = transactions.where((t) => 
+            t.type == transactionType).toList();
+      }
+      
+      return transactions;
+    } catch (e) {
+      throw Exception('فشل في جلب البيانات: $e');
     }
-
-    // فلترة حسب النوع
-    if (transactionType != null) {
-      transactions = transactions.where((t) => t.type == transactionType).toList();
-    }
-
-    // فلترة حسب الفئات
-    if (categories != null && categories.isNotEmpty) {
-      transactions = transactions.where((t) => categories.contains(t.category)).toList();
-    }
-
-    // فلترة حسب المدن
-    if (cities != null && cities.isNotEmpty) {
-      transactions = transactions.where((t) => cities.contains(t.city)).toList();
-    }
-
-    return transactions;
   }
 
-  void _addExcelHeaders(Worksheet sheet) {
-    final headers = [
-      'التاريخ', 'الوقت', 'النوع', 'الوصف', 'المبلغ', 
-      'المدينة', 'الفئة', 'متكررة', 'ملاحظات'
-    ];
+  Map<String, double> _getCategoryTotals(List<TransactionModel> transactions) {
+    final Map<String, double> categoryTotals = {};
     
-    for (int i = 0; i < headers.length; i++) {
-      final Range headerCell = sheet.getRangeByIndex(1, i + 1);
-      headerCell.setText(headers[i]);
-      headerCell.cellStyle.backColor = '#4CAF50';
-      headerCell.cellStyle.fontColor = '#FFFFFF';
-      headerCell.cellStyle.bold = true;
-      headerCell.cellStyle.fontSize = 12;
-      headerCell.autoFitColumns();
-    }
-  }
-
-  void _addTransactionData(Worksheet sheet, List<TransactionModel> transactions) {
-    for (int i = 0; i < transactions.length; i++) {
-      final transaction = transactions[i];
-      final int row = i + 2;
-
-      sheet.getRangeByIndex(row, 1).setText(DateFormat('yyyy-MM-dd').format(transaction.date));
-      sheet.getRangeByIndex(row, 2).setText(DateFormat('HH:mm').format(transaction.date));
-      sheet.getRangeByIndex(row, 3).setText(_getTypeLabel(transaction.type));
-      sheet.getRangeByIndex(row, 4).setText(transaction.description);
-      sheet.getRangeByIndex(row, 5).setNumber(transaction.amount);
-      sheet.getRangeByIndex(row, 6).setText(transaction.city);
-      sheet.getRangeByIndex(row, 7).setText(transaction.category);
-      sheet.getRangeByIndex(row, 8).setText(transaction.isRecurring ? 'نعم' : 'لا');
-      sheet.getRangeByIndex(row, 9).setText(transaction.notes ?? '');
-
-      // تلوين الصفوف حسب النوع
-      final String color = _getTypeColor(transaction.type);
-      for (int col = 1; col <= 9; col++) {
-        sheet.getRangeByIndex(row, col).cellStyle.backColor = color;
+    for (final transaction in transactions) {
+      if (transaction.type == 'expense' || transaction.type == 'commitment') {
+        categoryTotals[transaction.category] = 
+            (categoryTotals[transaction.category] ?? 0) + transaction.amount;
       }
     }
+    
+    return Map.fromEntries(
+      categoryTotals.entries.toList()
+        ..sort((a, b) => b.value.compareTo(a.value))
+    );
   }
 
-  void _addSummarySheet(Workbook workbook, List<TransactionModel> transactions) {
-    final Worksheet summarySheet = workbook.worksheets.addWithName('الملخص');
-
-    // حساب الإجماليات
-    final summary = _calculateSummary(transactions);
-
-    // كتابة الملخص
-    summarySheet.getRangeByIndex(1, 1).setText('الملخص المالي');
-    summarySheet.getRangeByIndex(1, 1).cellStyle.bold = true;
-    summarySheet.getRangeByIndex(1, 1).cellStyle.fontSize = 16;
-
-    final List<List<dynamic>> summaryData = [
-      ['إجمالي الدخل', summary['totalIncome']],
-      ['إجمالي المصروفات', summary['totalExpenses']],
-      ['إجمالي الالتزامات', summary['totalCommitments']],
-      ['الرصيد المتبقي', summary['balance']],
-      ['عدد العمليات', transactions.length],
-      ['معدل الادخار %', summary['savingsRate']],
-    ];
-
-    for (int i = 0; i < summaryData.length; i++) {
-      summarySheet.getRangeByIndex(i + 3, 2)
-        .setText(summaryData[i][1].toString());
+  Map<String, double> _getCityTotals(List<TransactionModel> transactions) {
+    final Map<String, double> cityTotals = {};
+    
+    for (final transaction in transactions) {
+      if (transaction.type == 'expense' || transaction.type == 'commitment') {
+        cityTotals[transaction.city] = 
+            (cityTotals[transaction.city] ?? 0) + transaction.amount;
+      }
     }
-
-    // إضافة ملخص الفئات
-    summarySheet.getRangeByIndex(10, 1).setText('ملخص الفئات');
-    summarySheet.getRangeByIndex(10, 1).cellStyle.bold = true;
     
-    final categoryTotals = _getCategoryTotals(transactions);
-    int rowIndex = 11;
-    categoryTotals.forEach((category, amount) {
-      summarySheet.getRangeByIndex(rowIndex, 1).setText(category);
-      summarySheet.getRangeByIndex(rowIndex, 2).setText(amount.toString());
-      rowIndex++;
-    });
-  }
-
-  void _addStatisticsSheet(Workbook workbook, List<TransactionModel> transactions) {
-    final Worksheet statsSheet = workbook.worksheets.addWithName('الإحصائيات');
-    
-    statsSheet.getRangeByIndex(1, 1).setText('الإحصائيات التفصيلية');
-    statsSheet.getRangeByIndex(1, 1).cellStyle.bold = true;
-    statsSheet.getRangeByIndex(1, 1).cellStyle.fontSize = 16;
-
-    // إحصائيات الفترة
-    final dateRange = _getDateRange(transactions);
-    statsSheet.getRangeByIndex(3, 1).setText('فترة البيانات');
-    statsSheet.getRangeByIndex(3, 2).setText('${DateFormat('yyyy-MM-dd').format(dateRange['start']!)} إلى ${DateFormat('yyyy-MM-dd').format(dateRange['end']!)}');
-
-    // أكثر الفئات إنفاقاً
-    final topCategories = _getTopCategories(transactions, limit: 5);
-    statsSheet.getRangeByIndex(5, 1).setText('أكثر 5 فئات إنفاقاً');
-    statsSheet.getRangeByIndex(5, 1).cellStyle.bold = true;
-    
-    for (int i = 0; i < topCategories.length; i++) {
-      statsSheet.getRangeByIndex(6 + i, 1).setText(topCategories[i]['category']);
-      statsSheet.getRangeByIndex(6 + i, 2).setText(topCategories[i]['amount'].toString());
-    }
-
-    // أكثر المدن إنفاقاً
-    final topCities = _getTopCities(transactions, limit: 5);
-    statsSheet.getRangeByIndex(12, 1).setText('أكثر 5 مدن إنفاقاً');
-    statsSheet.getRangeByIndex(12, 1).cellStyle.bold = true;
-    
-    for (int i = 0; i < topCities.length; i++) {
-      statsSheet.getRangeByIndex(13 + i, 1).setText(topCities[i]['city']);
-      statsSheet.getRangeByIndex(13 + i, 2).setText(topCities[i]['amount'].toString());
-    }
+    return Map.fromEntries(
+      cityTotals.entries.toList()
+        ..sort((a, b) => b.value.compareTo(a.value))
+    );
   }
 
   Map<String, dynamic> _calculateSummary(List<TransactionModel> transactions) {
@@ -235,90 +319,14 @@ class ExportImportService {
       }
     }
 
-    final balance = totalIncome - totalExpenses - totalCommitments;
-    final savingsRate = totalIncome > 0 ? (balance / totalIncome * 100) : 0;
+    final balance = totalIncome - (totalExpenses + totalCommitments);
 
     return {
       'totalIncome': totalIncome,
       'totalExpenses': totalExpenses,
       'totalCommitments': totalCommitments,
       'balance': balance,
-      'savingsRate': savingsRate.toStringAsFixed(1),
     };
-  }
-
-  Map<String, double> _getCategoryTotals(List<TransactionModel> transactions) {
-    final Map<String, double> categoryTotals = {};
-    
-    for (final transaction in transactions) {
-      if (transaction.type == 'expense' || transaction.type == 'commitment') {
-        categoryTotals[transaction.category] = 
-            (categoryTotals[transaction.category] ?? 0) + transaction.amount;
-      }
-    }
-    
-    return Map.fromEntries(
-      categoryTotals.entries.toList()
-        ..sort((a, b) => b.value.compareTo(a.value))
-    );
-  }
-
-  Map<String, DateTime> _getDateRange(List<TransactionModel> transactions) {
-    if (transactions.isEmpty) {
-      final now = DateTime.now();
-      return {'start': now, 'end': now};
-    }
-    
-    DateTime earliest = transactions.first.date;
-    DateTime latest = transactions.first.date;
-    
-    for (final transaction in transactions) {
-      if (transaction.date.isBefore(earliest)) earliest = transaction.date;
-      if (transaction.date.isAfter(latest)) latest = transaction.date;
-    }
-    
-    return {'start': earliest, 'end': latest};
-  }
-
-  List<Map<String, dynamic>> _getTopCategories(List<TransactionModel> transactions, {int limit = 5}) {
-    final categoryTotals = _getCategoryTotals(transactions);
-    return categoryTotals.entries
-        .take(limit)
-        .map((e) => {'category': e.key, 'amount': e.value})
-        .toList();
-  }
-
-  List<Map<String, dynamic>> _getTopCities(List<TransactionModel> transactions, {int limit = 5}) {
-    final Map<String, double> cityTotals = {};
-    
-    for (final transaction in transactions) {
-      if (transaction.type == 'expense' || transaction.type == 'commitment') {
-        cityTotals[transaction.city] = 
-            (cityTotals[transaction.city] ?? 0) + transaction.amount;
-      }
-    }
-    
-    final sortedCities = Map.fromEntries(
-      cityTotals.entries.toList()
-        ..sort((a, b) => b.value.compareTo(a.value))
-    );
-    
-    return sortedCities.entries
-        .take(limit)
-        .map((e) => {'city': e.key, 'amount': e.value})
-        .toList();
-  }
-
-  Future<String> _saveExcelFile(Workbook workbook) async {
-    final Directory directory = await getApplicationDocumentsDirectory();
-    final String timestamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
-    final String filePath = '${directory.path}/money_manager_export_$timestamp.xlsx';
-    
-    final List<int> bytes = workbook.saveAsStream();
-    final File file = File(filePath);
-    await file.writeAsBytes(bytes);
-    
-    return filePath;
   }
 
   String _getTypeLabel(String type) {
@@ -334,44 +342,17 @@ class ExportImportService {
     }
   }
 
-  String _getTypeColor(String type) {
-    switch (type) {
-      case 'income':
-        return '#E8F5E8';
-      case 'expense':
-        return '#E3F2FD';
-      case 'commitment':
-        return '#FFF3E0';
-      default:
-        return '#FFFFFF';
-    }
-  }
-
-  // ========== مشاركة ملف Excel ==========
-
-  Future<void> shareExcelFile(String filePath) async {
-    try {
-      await Share.shareXFiles(
-        [XFile(filePath)],
-        text: 'تقرير مالي من تطبيق مدير الأموال',
-        subject: 'التقرير المالي - مدير الأموال',
-      );
-    } catch (e) {
-      throw Exception('فشل في مشاركة الملف: $e');
-    }
-  }
-
-  // ========== تصدير إلى JSON ==========
+  // ========== Export to JSON ==========
 
   Future<String?> exportToJson({
-    DateTime? startDate,
+    DateTime? startDate, 
     DateTime? endDate,
     List<String>? categories,
     List<String>? cities,
     String? transactionType,
   }) async {
     try {
-      final List<TransactionModel> transactions = await _getFilteredTransactions(
+      final transactions = await _getFilteredTransactions(
         startDate: startDate,
         endDate: endDate,
         categories: categories,
@@ -384,225 +365,229 @@ class ExportImportService {
       }
 
       final exportData = {
-        'export_info': {
-          'app_name': 'مدير الأموال',
-          'export_date': DateTime.now().toIso8601String(),
-          'version': '1.0',
-          'filters': {
-            'start_date': startDate?.toIso8601String(),
-            'end_date': endDate?.toIso8601String(),
-            'categories': categories,
-            'cities': cities,
-            'transaction_type': transactionType,
-          }
+        'export_date': DateTime.now().toIso8601String(),
+        'total_transactions': transactions.length,
+        'filters': {
+          'start_date': startDate?.toIso8601String(),
+          'end_date': endDate?.toIso8601String(),
+          'categories': categories,
+          'cities': cities,
+          'transaction_type': transactionType,
         },
-        'summary': _calculateSummary(transactions),
         'transactions': transactions.map((t) => t.toMap()).toList(),
-        'statistics': {
-          'total_count': transactions.length,
-          'date_range': _getDateRange(transactions),
-          'top_categories': _getTopCategories(transactions),
-          'top_cities': _getTopCities(transactions),
-        }
       };
 
-      final Directory directory = await getApplicationDocumentsDirectory();
-      final String timestamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
-      final String filePath = '${directory.path}/money_manager_export_$timestamp.json';
+      final directory = await getApplicationDocumentsDirectory();
+      final timestamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
+      final filePath = '${directory.path}/money_manager_backup_$timestamp.json';
       
       final File file = File(filePath);
-      await file.writeAsString(
-        jsonEncode(exportData),
-        encoding: utf8,
-      );
-
+      await file.writeAsString(jsonEncode(exportData));
+      
       return filePath;
     } catch (e) {
-      throw Exception('فشل في إنشاء التصدير: $e');
+      throw Exception('فشل في تصدير JSON: $e');
     }
   }
 
-  // ========== استيراد من JSON ==========
+  // ========== Share Excel File ==========
 
-  Future<ImportResult> importFromJson() async {
+  Future<void> shareExcelFile(String filePath) async {
     try {
-      final FilePickerResult? result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['json'],
-      );
-
-      if (result == null || result.files.isEmpty) {
-        return ImportResult.cancelled();
-      }
-
-      final File file = File(result.files.first.path!);
-      final String content = await file.readAsString(encoding: utf8);
-      final dynamic data = jsonDecode(content);
-
-      if (data is! Map<String, dynamic>) {
-        return ImportResult.error('تنسيق الملف غير صحيح');
-      }
-
-      return await _processJsonImport(data);
+      await shareFile(filePath, subject: 'تصدير Excel - مدير الأموال');
     } catch (e) {
-      return ImportResult.error('فشل في استيراد البيانات: $e');
+      throw Exception('فشل في مشاركة ملف Excel: $e');
     }
   }
 
-  Future<ImportResult> _processJsonImport(Map<String, dynamic> data) async {
+  // ========== Share Files ==========
+
+  Future<void> shareFile(String filePath, {String? subject}) async {
     try {
-      int importedCount = 0;
-      int skippedCount = 0;
-
-      // استيراد المعاملات
-      if (data.containsKey('transactions')) {
-        final List<dynamic> transactionsData = data['transactions'];
-        
-        for (final transactionData in transactionsData) {
-          if (transactionData is Map<String, dynamic>) {
-            try {
-              final transaction = TransactionModel.fromMap(transactionData);
-              await _db.insertTransaction(transaction);
-              importedCount++;
-            } catch (e) {
-              skippedCount++;
-              continue;
-            }
-          }
-        }
-      }
-
-      return ImportResult.success(
-        importedCount: importedCount,
-        skippedCount: skippedCount,
+      await Share.shareXFiles(
+        [XFile(filePath)],
+        subject: subject ?? 'تصدير بيانات مدير الأموال',
       );
     } catch (e) {
-      return ImportResult.error('خطأ في معالجة البيانات: $e');
+      throw Exception('فشل في مشاركة الملف: $e');
     }
   }
 
-  // ========== استيراد من Excel ==========
+  // ========== Import from Excel ==========
 
   Future<ImportResult> importFromExcel() async {
     try {
-      final FilePickerResult? result = await FilePicker.platform.pickFiles(
+      final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['xlsx', 'xls'],
+        allowMultiple: false,
       );
 
       if (result == null || result.files.isEmpty) {
         return ImportResult.cancelled();
       }
 
-      final File file = File(result.files.first.path!);
-      final List<int> bytes = await file.readAsBytes();
-      final Workbook workbook = Workbook(bytes);
-      final Worksheet sheet = workbook.worksheets[0];
+      final file = File(result.files.single.path!);
+      final bytes = await file.readAsBytes();
+      
+      // Create workbook from bytes using the correct constructor
+      final xlsio.Workbook workbook = xlsio.Workbook();
+      
+      // Alternative approach - parse CSV instead of Excel for now
+      // This is a temporary solution until xlsio version is compatible
+      workbook.dispose();
+      
+      // For now, let's suggest the user to export as CSV first
+      return ImportResult.error(
+        'استيراد Excel غير مدعوم حالياً. يرجى تصدير البيانات كـ CSV أو JSON واستيرادها.'
+      );
 
-      if (sheet.rows.isEmpty) {
-        workbook.dispose();
-        return ImportResult.error('الورقة فارغة');
+    } catch (e) {
+      return ImportResult.error('فشل في استيراد الملف: $e');
+    }
+  }
+
+  // ========== Import from CSV ==========
+
+  Future<ImportResult> importFromCsv() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['csv'],
+        allowMultiple: false,
+      );
+
+      if (result == null || result.files.isEmpty) {
+        return ImportResult.cancelled();
       }
 
+      final file = File(result.files.single.path!);
+      final csvContent = await file.readAsString(encoding: utf8);
+      
+      final List<List<dynamic>> csvRows = const CsvToListConverter().convert(csvContent);
+      
+      if (csvRows.isEmpty) {
+        return ImportResult.error('الملف فارغ أو لا يحتوي على بيانات');
+      }
+
+      final List<TransactionModel> transactions = [];
       int importedCount = 0;
       int skippedCount = 0;
-      final List<Row> rows = sheet.rows;
 
-      // تخطي صف الرؤوس
-      for (int i = 1; i < rows.length; i++) {
-        final Row row = rows[i];
-        if (row.cells.length < 5) {
-          skippedCount++;
-          continue;
-        }
-
+      // Skip header row, start from index 1
+      for (int i = 1; i < csvRows.length; i++) {
         try {
-          final TransactionModel? transaction = _parseExcelRow(row.cells);
+          final row = csvRows[i];
+          if (row.length < 5) {
+            skippedCount++;
+            continue;
+          }
+
+          final transaction = _parseCsvRow(row);
           if (transaction != null) {
-            await _db.insertTransaction(transaction);
+            transactions.add(transaction);
             importedCount++;
           } else {
             skippedCount++;
           }
         } catch (e) {
           skippedCount++;
-          continue;
         }
       }
 
-      workbook.dispose();
+      if (transactions.isEmpty) {
+        return ImportResult.error('لم يتم العثور على بيانات صالحة للاستيراد');
+      }
+
+      // Save transactions to database
+      for (final transaction in transactions) {
+        await _db.insertTransaction(transaction);
+      }
+
       return ImportResult.success(
         importedCount: importedCount,
         skippedCount: skippedCount,
       );
+
     } catch (e) {
-      return ImportResult.error('فشل في استيراد البيانات: $e');
+      return ImportResult.error('فشل في استيراد ملف CSV: $e');
     }
   }
 
-  TransactionModel? _parseExcelRow(List<Cell> cells) {
+  TransactionModel? _parseCsvRow(List<dynamic> row) {
     try {
-      final String? dateStr = cells[0].value?.toString();
-      final String? timeStr = cells[1].value?.toString();
-      final String? typeStr = cells[2].value?.toString();
-      final String? description = cells[3].value?.toString();
-      final String? amountStr = cells[4].value?.toString();
-      final String? city = cells.length > 5 ? cells[5].value?.toString() : 'غير محدد';
+      if (row.length < 5) return null;
 
-      if (dateStr == null || typeStr == null || description == null || amountStr == null) {
-        return null;
-      }
-
-      // تحويل التاريخ والوقت
-      final DateTime date = DateFormat('yyyy-MM-dd').parse(dateStr);
-      DateTime finalDate = date;
+      // Parse date (column 1)
+      String? dateStr = row[0]?.toString();
+      if (dateStr == null || dateStr.isEmpty) return null;
       
-      if (timeStr != null && timeStr.isNotEmpty) {
+      DateTime finalDate = DateTime.now();
+      try {
+        finalDate = DateTime.parse(dateStr);
+      } catch (e) {
         try {
-          final DateTime time = DateFormat('HH:mm').parse(timeStr);
-          finalDate = DateTime(date.year, date.month, date.day, time.hour, time.minute);
-        } catch (e) {
-          finalDate = date;
+          finalDate = DateFormat('yyyy/MM/dd').parse(dateStr);
+        } catch (e2) {
+          try {
+            finalDate = DateFormat('dd/MM/yyyy').parse(dateStr);
+          } catch (e3) {
+            return null;
+          }
         }
       }
 
-      // تحويل النوع
-      String? type;
-      switch (typeStr) {
-        case 'دخل':
-          type = 'income';
-          break;
-        case 'مصروف':
-          type = 'expense';
-          break;
-        case 'التزام':
-          type = 'commitment';
-          break;
-        default:
-          return null;
+      // Parse type (column 3)
+      String? typeStr = row[2]?.toString();
+      if (typeStr == null || typeStr.isEmpty) return null;
+      
+      String type = 'expense';
+      if (typeStr.contains('دخل') || typeStr.toLowerCase().contains('income')) {
+        type = 'income';
+      } else if (typeStr.contains('التزام') || typeStr.toLowerCase().contains('commitment')) {
+        type = 'commitment';
       }
 
-      // تحويل المبلغ
-      final double? amount = double.tryParse(amountStr.replaceAll(',', ''));
-      if (amount == null || amount <= 0) return null;
+      // Parse description (column 4)
+      String? description = row[3]?.toString();
+      if (description == null || description.isEmpty) return null;
 
-      // الفئة
+      // Parse amount (column 5)
+      double amount = 0.0;
+      try {
+        amount = double.parse(row[4].toString());
+      } catch (e) {
+        return null;
+      }
+
+      // Parse city (column 6)
+      String city = 'غير محدد';
+      if (row.length > 5 && row[5] != null) {
+        city = row[5].toString();
+        if (city.isEmpty) city = 'غير محدد';
+      }
+
+      // Parse category (column 7)
       String category = 'أخرى';
-      if (cells.length > 6 && cells[6].value != null) {
-        category = cells[6].value.toString();
+      if (row.length > 6 && row[6] != null) {
+        category = row[6].toString();
+        if (category.isEmpty) category = 'أخرى';
       }
 
-      // المتكررة
+      // Parse recurring (column 8)
       bool isRecurring = false;
-      if (cells.length > 7 && cells[7].value != null) {
-        isRecurring = cells[7].value.toString().toLowerCase() == 'نعم';
+      if (row.length > 7 && row[7] != null) {
+        String recurringStr = row[7].toString().toLowerCase();
+        isRecurring = recurringStr.contains('نعم') || 
+                     recurringStr.contains('true') || 
+                     recurringStr.contains('yes');
       }
 
-      // الملاحظات
+      // Parse notes (column 9)
       String? notes;
-      if (cells.length > 8 && cells[8].value != null) {
-        notes = cells[8].value.toString();
-        if (notes!.isEmpty) notes = null;
+      if (row.length > 8 && row[8] != null) {
+        notes = row[8].toString();
+        if (notes.isEmpty) notes = null;
       }
 
       return TransactionModel(
@@ -610,7 +595,7 @@ class ExportImportService {
         description: description,
         amount: amount,
         category: category,
-        city: city ?? 'غير محدد',
+        city: city,
         date: finalDate,
         isRecurring: isRecurring,
         notes: notes,
@@ -620,7 +605,53 @@ class ExportImportService {
     }
   }
 
-  // ========== حذف الملفات المؤقتة ==========
+  // ========== Import from JSON ==========
+
+  Future<ImportResult> importFromJson() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['json'],
+        allowMultiple: false,
+      );
+
+      if (result == null || result.files.isEmpty) {
+        return ImportResult.cancelled();
+      }
+
+      final file = File(result.files.single.path!);
+      final jsonString = await file.readAsString();
+      final jsonData = jsonDecode(jsonString);
+
+      if (jsonData is! Map<String, dynamic> || !jsonData.containsKey('transactions')) {
+        return ImportResult.error('تنسيق ملف JSON غير صحيح');
+      }
+
+      final transactionsList = jsonData['transactions'] as List;
+      int importedCount = 0;
+      int skippedCount = 0;
+
+      for (final transactionData in transactionsList) {
+        try {
+          final transaction = TransactionModel.fromMap(transactionData);
+          await _db.insertTransaction(transaction);
+          importedCount++;
+        } catch (e) {
+          skippedCount++;
+        }
+      }
+
+      return ImportResult.success(
+        importedCount: importedCount,
+        skippedCount: skippedCount,
+      );
+
+    } catch (e) {
+      return ImportResult.error('فشل في استيراد ملف JSON: $e');
+    }
+  }
+
+  // ========== Cleanup Temp Files ==========
 
   Future<void> cleanupTempFiles() async {
     try {
@@ -638,17 +669,17 @@ class ExportImportService {
               await file.delete();
             }
           } catch (e) {
-            // تجاهل أخطاء الحذف
+            // Ignore deletion errors
           }
         }
       }
     } catch (e) {
-      // تجاهل أخطاء التنظيف
+      // Ignore cleanup errors
     }
   }
 }
 
-// ========== نتيجة الاستيراد ==========
+// ========== Import Result ==========
 
 class ImportResult {
   final bool success;
@@ -689,8 +720,4 @@ class ImportResult {
       cancelled: true,
     );
   }
-}Index(i + 3, 1)
-        ..setText(summaryData[i][0].toString())
-        ..cellStyle.bold = true;
-      
-      summarySheet.getRangeBy
+}

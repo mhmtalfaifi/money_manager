@@ -103,7 +103,7 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> with SingleTi
                     width: 50,
                     height: 5,
                     decoration: BoxDecoration(
-                      color: Colors.grey[300],
+                      color: AppColors.textLight,
                       borderRadius: BorderRadius.circular(3),
                     ),
                   ),
@@ -113,10 +113,10 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> with SingleTi
                 // العنوان
                 Text(
                   widget.transaction == null ? 'إضافة عملية جديدة' : 'تعديل العملية',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.bold,
-                    color: Colors.black87,
+                    color: AppColors.textPrimary,
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -125,7 +125,7 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> with SingleTi
                 // اختيار النوع
                 Container(
                   decoration: BoxDecoration(
-                    color: Colors.grey[50],
+                    color: AppColors.background,
                     borderRadius: BorderRadius.circular(16),
                   ),
                   padding: const EdgeInsets.all(4),
@@ -136,8 +136,8 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> with SingleTi
                           'income', 
                           'دخل', 
                           Icons.arrow_downward_rounded,
-                          Color(0xFFE8F5E9),
-                          Color(0xFF2E7D32),
+                          AppColors.incomeLight,
+                          AppColors.income,
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -146,8 +146,8 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> with SingleTi
                           'commitment', 
                           'التزام', 
                           Icons.event_repeat_rounded,
-                          Color(0xFFFFEBEE),
-                          Color(0xFFD32F2F),
+                          AppColors.commitmentLight,
+                          AppColors.commitment,
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -156,8 +156,8 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> with SingleTi
                           'expense', 
                           'مصروف', 
                           Icons.arrow_upward_rounded,
-                          Color(0xFFE3F2FD),
-                          Color(0xFF1976D2),
+                          AppColors.expenseLight,
+                          AppColors.expense,
                         ),
                       ),
                     ],
@@ -171,17 +171,17 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> with SingleTi
                   decoration: InputDecoration(
                     labelText: 'الوصف',
                     hintText: 'مثال: راتب شهر يناير',
-                    prefixIcon: const Icon(Icons.description_rounded, color: Colors.grey),
+                    prefixIcon: Icon(Icons.description_rounded, color: AppColors.textSecondary),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(16),
-                      borderSide: const BorderSide(color: Colors.grey),
+                      borderSide: BorderSide(color: AppColors.textLight),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(16),
-                      borderSide: const BorderSide(color: AppColors.primary),
+                      borderSide: BorderSide(color: AppColors.primary),
                     ),
                     filled: true,
-                    fillColor: Colors.grey[50],
+                    fillColor: AppColors.background,
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
@@ -202,18 +202,18 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> with SingleTi
                   decoration: InputDecoration(
                     labelText: 'المبلغ',
                     hintText: '0.00',
-                    prefixIcon: const Icon(Icons.attach_money_rounded, color: Colors.grey),
+                    prefixIcon: Icon(Icons.attach_money_rounded, color: AppColors.textSecondary),
                     suffixText: AppConstants.currencySymbol,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(16),
-                      borderSide: const BorderSide(color: Colors.grey),
+                      borderSide: BorderSide(color: AppColors.textLight),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(16),
-                      borderSide: const BorderSide(color: AppColors.primary),
+                      borderSide: BorderSide(color: AppColors.primary),
                     ),
                     filled: true,
-                    fillColor: Colors.grey[50],
+                    fillColor: AppColors.background,
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
@@ -233,19 +233,19 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> with SingleTi
                   value: _selectedCategory,
                   decoration: InputDecoration(
                     labelText: 'الفئة',
-                    prefixIcon: const Icon(Icons.category_rounded, color: Colors.grey),
+                    prefixIcon: Icon(Icons.category_rounded, color: AppColors.textSecondary),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(16),
-                      borderSide: const BorderSide(color: Colors.grey),
+                      borderSide: BorderSide(color: AppColors.textLight),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(16),
-                      borderSide: const BorderSide(color: AppColors.primary),
+                      borderSide: BorderSide(color: AppColors.primary),
                     ),
                     filled: true,
-                    fillColor: Colors.grey[50],
+                    fillColor: AppColors.background,
                   ),
-                  icon: const Icon(Icons.arrow_drop_down_rounded),
+                  icon: Icon(Icons.arrow_drop_down_rounded, color: AppColors.textSecondary),
                   items: [
                     ...categories.map((cat) => DropdownMenuItem(
                       value: cat.name,
@@ -290,19 +290,19 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> with SingleTi
                   value: _selectedCity,
                   decoration: InputDecoration(
                     labelText: 'المدينة',
-                    prefixIcon: const Icon(Icons.location_city_rounded, color: Colors.grey),
+                    prefixIcon: Icon(Icons.location_city_rounded, color: AppColors.textSecondary),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(16),
-                      borderSide: const BorderSide(color: Colors.grey),
+                      borderSide: BorderSide(color: AppColors.textLight),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(16),
-                      borderSide: const BorderSide(color: AppColors.primary),
+                      borderSide: BorderSide(color: AppColors.primary),
                     ),
                     filled: true,
-                    fillColor: Colors.grey[50],
+                    fillColor: AppColors.background,
                   ),
-                  icon: const Icon(Icons.arrow_drop_down_rounded),
+                  icon: Icon(Icons.arrow_drop_down_rounded, color: AppColors.textSecondary),
                   items: [
                     ...cities.map((city) => DropdownMenuItem(
                       value: city.name,
@@ -349,25 +349,26 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> with SingleTi
                   child: InputDecorator(
                     decoration: InputDecoration(
                       labelText: 'التاريخ',
-                      prefixIcon: const Icon(Icons.calendar_today_rounded, color: Colors.grey),
+                      prefixIcon: Icon(Icons.calendar_today_rounded, color: AppColors.textSecondary),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(16),
-                        borderSide: const BorderSide(color: Colors.grey),
+                        borderSide: BorderSide(color: AppColors.textLight),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(16),
-                        borderSide: const BorderSide(color: AppColors.primary),
+                        borderSide: BorderSide(color: AppColors.primary),
                       ),
                       filled: true,
-                      fillColor: Colors.grey[50],
+                      fillColor: AppColors.background,
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
                           DateFormat('yyyy/MM/dd').format(_selectedDate),
+                          style: TextStyle(color: AppColors.textPrimary),
                         ),
-                        const Icon(Icons.calendar_month_rounded, size: 20, color: Colors.grey),
+                        Icon(Icons.calendar_month_rounded, size: 20, color: AppColors.textSecondary),
                       ],
                     ),
                   ),
@@ -380,17 +381,17 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> with SingleTi
                   maxLines: 2,
                   decoration: InputDecoration(
                     labelText: 'ملاحظات (اختياري)',
-                    prefixIcon: const Icon(Icons.note_rounded, color: Colors.grey),
+                    prefixIcon: Icon(Icons.note_rounded, color: AppColors.textSecondary),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(16),
-                      borderSide: const BorderSide(color: Colors.grey),
+                      borderSide: BorderSide(color: AppColors.textLight),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(16),
-                      borderSide: const BorderSide(color: AppColors.primary),
+                      borderSide: BorderSide(color: AppColors.primary),
                     ),
                     filled: true,
-                    fillColor: Colors.grey[50],
+                    fillColor: AppColors.background,
                   ),
                 ),
                 
@@ -399,12 +400,12 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> with SingleTi
                   const SizedBox(height: 16),
                   Container(
                     decoration: BoxDecoration(
-                      color: Colors.grey[50],
+                      color: AppColors.background,
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: SwitchListTile(
-                      title: const Text('التزام شهري متكرر', style: TextStyle(fontWeight: FontWeight.w500)),
-                      subtitle: const Text('سيتم إضافته تلقائياً كل شهر'),
+                      title: Text('التزام شهري متكرر', style: TextStyle(fontWeight: FontWeight.w500, color: AppColors.textPrimary)),
+                      subtitle: Text('سيتم إضافته تلقائياً كل شهر', style: TextStyle(color: AppColors.textSecondary)),
                       value: _isRecurring,
                       onChanged: (value) {
                         setState(() {
@@ -431,9 +432,9 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> with SingleTi
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(16),
                             ),
-                            side: const BorderSide(color: AppColors.primary),
+                            side: BorderSide(color: AppColors.primary),
                           ),
-                          child: const Text(
+                          child: Text(
                             'إلغاء',
                             style: TextStyle(color: AppColors.primary),
                           ),
@@ -510,7 +511,7 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> with SingleTi
             Icon(
               icon,
               size: 20,
-              color: isSelected ? iconColor : Colors.grey,
+              color: isSelected ? iconColor : AppColors.textSecondary,
             ),
             const SizedBox(height: 4),
             Text(
@@ -518,7 +519,7 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> with SingleTi
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                color: isSelected ? iconColor : Colors.grey,
+                color: isSelected ? iconColor : AppColors.textSecondary,
               ),
             ),
           ],
@@ -530,12 +531,12 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> with SingleTi
   Color _getButtonColor() {
     switch (_selectedType) {
       case 'income':
-        return const Color(0xFF2E7D32);
+        return AppColors.income;
       case 'commitment':
-        return const Color(0xFFD32F2F);
+        return AppColors.commitment;
       case 'expense':
       default:
-        return const Color(0xFF1976D2);
+        return AppColors.expense;
     }
   }
 
@@ -549,7 +550,7 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> with SingleTi
       builder: (context, child) {
         return Theme(
           data: ThemeData.light().copyWith(
-            colorScheme: const ColorScheme.light(
+            colorScheme: ColorScheme.light(
               primary: AppColors.primary,
               onPrimary: Colors.white,
             ),
@@ -576,11 +577,12 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> with SingleTi
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
+              Text(
                 'إضافة فئة جديدة',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
                 ),
               ),
               const SizedBox(height: 16),
@@ -590,6 +592,11 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> with SingleTi
                   hintText: 'اسم الفئة',
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: AppColors.textLight),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: AppColors.primary),
                   ),
                 ),
                 onChanged: (value) => categoryName = value,
@@ -605,8 +612,12 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> with SingleTi
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
+                        side: BorderSide(color: AppColors.primary),
                       ),
-                      child: const Text('إلغاء'),
+                      child: Text(
+                        'إلغاء',
+                        style: TextStyle(color: AppColors.primary),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -654,11 +665,12 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> with SingleTi
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
+              Text(
                 'إضافة مدينة جديدة',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
                 ),
               ),
               const SizedBox(height: 16),
@@ -668,6 +680,11 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> with SingleTi
                   hintText: 'اسم المدينة',
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: AppColors.textLight),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: AppColors.primary),
                   ),
                 ),
                 onChanged: (value) => cityName = value,
@@ -683,8 +700,12 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> with SingleTi
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
+                        side: BorderSide(color: AppColors.primary),
                       ),
-                      child: const Text('إلغاء'),
+                      child: Text(
+                        'إلغاء',
+                        style: TextStyle(color: AppColors.primary),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),

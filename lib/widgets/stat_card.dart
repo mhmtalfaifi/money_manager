@@ -1,8 +1,6 @@
-// widgets/stat_card.dart
-
 import 'package:flutter/material.dart';
 import '../utils/app_constants.dart';
-
+import '../utils/app_colors.dart'; // أضفنا استيراد ألوان التطبيق
 
 class StatCard extends StatelessWidget {
   final String title;
@@ -34,7 +32,7 @@ class StatCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: AppColors.darkBrown.withOpacity(0.1), // ظل بلون البني الداكن
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -76,17 +74,17 @@ class StatCard extends StatelessWidget {
                   title,
                   style: TextStyle(
                     fontSize: 14,
-                    color: Colors.grey[600],
+                    color: AppColors.textSecondary, // استخدام ألوان التطبيق
                     fontWeight: FontWeight.w500,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   AppConstants.formatMoney(amount),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.bold,
-                    color: Colors.black87,
+                    color: AppColors.textPrimary, // استخدام ألوان التطبيق
                   ),
                 ),
                 if (subtitle != null) ...[
@@ -95,7 +93,7 @@ class StatCard extends StatelessWidget {
                     subtitle!,
                     style: TextStyle(
                       fontSize: 12,
-                      color: Colors.grey[500],
+                      color: AppColors.textLight, // استخدام ألوان التطبيق
                     ),
                   ),
                 ],
@@ -133,7 +131,7 @@ class MiniStatCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: AppColors.darkBrown.withOpacity(0.1), // ظل بلون البني الداكن
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -164,10 +162,10 @@ class MiniStatCard extends StatelessWidget {
                   const SizedBox(height: 12),
                   Text(
                     value,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: Colors.black87,
+                      color: AppColors.textPrimary, // استخدام ألوان التطبيق
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -175,7 +173,7 @@ class MiniStatCard extends StatelessWidget {
                     title,
                     style: TextStyle(
                       fontSize: 12,
-                      color: Colors.grey[600],
+                      color: AppColors.textSecondary, // استخدام ألوان التطبيق
                     ),
                     textAlign: TextAlign.center,
                   ),

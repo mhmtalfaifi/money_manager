@@ -1,25 +1,20 @@
 // main.dart
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter/foundation.dart';
 import 'screens/home_screen.dart';
+import 'screens/welcome_screen.dart';
 import 'utils/app_colors.dart';
 import 'helpers/database_helper.dart';
 import 'providers/transaction_provider.dart';
-import 'services/error_handler_service.dart';
-import 'services/cache_service.dart';
-import 'services/memory_manager_service.dart';
+import 'providers/user_provider.dart';
+import 'services/user_service.dart';
 
 void main() async {
   // التأكد من تهيئة Flutter
   WidgetsFlutterBinding.ensureInitialized();
-  
-  // تهيئة خدمة معالجة الأخطاء أولاً
-  final errorHandler = ErrorHandlerService();
-  errorHandler.initialize();
 
   try {
     // تهيئة الخدمات الأساسية
@@ -35,8 +30,6 @@ void main() async {
     runApp(const MyApp());
     
   } catch (e) {
-    errorHandler.logSimpleError('فشل في تهيئة التطبيق: $e');
-    
     // في حالة فشل التهيئة، عرض شاشة خطأ
     runApp(ErrorApp(error: e.toString()));
   }
@@ -45,22 +38,9 @@ void main() async {
 /// تهيئة جميع الخدمات
 Future<void> _initializeServices() async {
   try {
-    // تهيئة التخزين المؤقت
-    await CacheService().initialize();
-    
-    // تهيئة مدير الذاكرة
-    MemoryManagerService().initialize(
-      onMemoryWarning: () {
-        if (kDebugMode) {
-          debugPrint('⚠️ Memory warning received');
-        }
-      },
-      onMemoryCritical: () {
-        if (kDebugMode) {
-          debugPrint('🚨 Critical memory situation');
-        }
-      },
-    );
+    // تهيئة خدمة المستخدم
+    await UserService().loadUserName();
+    await UserService().updateLastLogin();
     
     if (kDebugMode) {
       debugPrint('✅ All services initialized successfully');
@@ -107,7 +87,7 @@ Future<void> _setupSystemSettings() async {
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
       statusBarIconBrightness: Brightness.dark,
-      systemNavigationBarColor: Colors.white,
+      systemNavigationBarColor: Color(0xFFF5F2E9), // خلفية بيج فاتح
       systemNavigationBarIconBrightness: Brightness.dark,
     ),
   );
@@ -125,6 +105,7 @@ class MyApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => TransactionProvider()),
+        ChangeNotifierProvider(create: (_) => UserProvider()),
       ],
       child: MaterialApp(
         title: 'مدير الأموال',
@@ -164,13 +145,13 @@ class MyApp extends StatelessWidget {
         // معالجة الأخطاء في التنقل
         onGenerateRoute: (settings) {
           return MaterialPageRoute(
-            builder: (context) => const HomeScreen(),
+            builder: (context) => const AppWrapper(),
           );
         },
         
         onUnknownRoute: (settings) {
           return MaterialPageRoute(
-            builder: (context) => const HomeScreen(),
+            builder: (context) => const AppWrapper(),
           );
         },
       ),
@@ -180,27 +161,32 @@ class MyApp extends StatelessWidget {
   ThemeData _buildAppTheme() {
     return ThemeData(
       colorScheme: ColorScheme.fromSeed(
-        seedColor: AppColors.primary,
+        seedColor: const Color(0xFFC5D300), // أخضر فاتح
         brightness: Brightness.light,
+        primary: const Color(0xFFC5D300), // أخضر فاتح
+        onPrimary: Colors.white,
+        secondary: const Color(0xFF473D33), // بني داكن
+        onSecondary: Colors.white,
+        background: const Color(0xFFF5F2E9), // خلفية بيج فاتح
       ),
       useMaterial3: true,
       fontFamily: 'Tajawal',
       
       // تخصيص الألوان
-      primaryColor: AppColors.primary,
-      scaffoldBackgroundColor: AppColors.background,
+      primaryColor: const Color(0xFFC5D300), // أخضر فاتح
+      scaffoldBackgroundColor: const Color(0xFFF5F2E9), // خلفية بيج فاتح
       
       // تخصيص AppBar
       appBarTheme: const AppBarTheme(
         centerTitle: true,
         elevation: 0,
-        backgroundColor: AppColors.background,
-        foregroundColor: AppColors.textPrimary,
+        backgroundColor: Color(0xFFF5F2E9), // خلفية بيج فاتح
+        foregroundColor: Color(0xFF473D33), // بني داكن
         titleTextStyle: TextStyle(
           fontFamily: 'Tajawal',
           fontSize: 20,
           fontWeight: FontWeight.bold,
-          color: AppColors.textPrimary,
+          color: Color(0xFF473D33), // بني داكن
         ),
       ),
       
@@ -217,6 +203,8 @@ class MyApp extends StatelessWidget {
       // تخصيص الأزرار
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFFC5D300), // أخضر فاتح
+          foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
@@ -225,18 +213,33 @@ class MyApp extends StatelessWidget {
         ),
       ),
       
-      // تخصيص الـ FloatingActionButton
-      floatingActionButtonTheme: const FloatingActionButtonThemeData(
-        elevation: 4,
-        backgroundColor: AppColors.addButton,
+      // تخصيص حقول الإدخال
+      inputDecorationTheme: InputDecorationTheme(
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Colors.grey),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFFC5D300), width: 2), // أخضر فاتح
+        ),
+        filled: true,
+        fillColor: Colors.white,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       ),
       
-      // تخصيص SnackBar
-      snackBarTheme: SnackBarThemeData(
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+      // تخصيص النصوص
+      textTheme: const TextTheme(
+        bodyLarge: TextStyle(color: Color(0xFF473D33)), // بني داكن
+        bodyMedium: TextStyle(color: Color(0xFF473D33)), // بني داكن
+        titleLarge: TextStyle(color: Color(0xFF473D33)), // بني داكن
+        titleMedium: TextStyle(color: Color(0xFF473D33)), // بني داكن
+        titleSmall: TextStyle(color: Color(0xFF473D33)), // بني داكن
+      ),
+      
+      // تخصيص الأيقونات
+      iconTheme: const IconThemeData(
+        color: Color(0xFF473D33), // بني داكن
       ),
     );
   }
@@ -244,36 +247,16 @@ class MyApp extends StatelessWidget {
   ThemeData _buildDarkTheme() {
     return ThemeData(
       colorScheme: ColorScheme.fromSeed(
-        seedColor: AppColors.primary,
+        seedColor: const Color(0xFFC5D300), // أخضر فاتح
         brightness: Brightness.dark,
       ),
       useMaterial3: true,
       fontFamily: 'Tajawal',
-      scaffoldBackgroundColor: const Color(0xFF121212),
-      
-      appBarTheme: const AppBarTheme(
-        centerTitle: true,
-        elevation: 0,
-        backgroundColor: Color(0xFF121212),
-        titleTextStyle: TextStyle(
-          fontFamily: 'Tajawal',
-          fontSize: 20,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-      
-      cardTheme: CardThemeData( 
-        elevation: 0,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      ),
     );
   }
 }
 
-/// غلاف للتطبيق مع معالجة الحالات الاستثنائية
+/// غلاف التطبيق الذي يقرر أي شاشة يعرض
 class AppWrapper extends StatefulWidget {
   const AppWrapper({super.key});
 
@@ -282,15 +265,14 @@ class AppWrapper extends StatefulWidget {
 }
 
 class _AppWrapperState extends State<AppWrapper> with WidgetsBindingObserver {
+  bool _isLoading = true;
+  bool _showWelcome = true;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    
-    // تحسين الأداء عند بدء التطبيق
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _optimizeAppStart();
-    });
+    _checkFirstTimeUser();
   }
 
   @override
@@ -299,10 +281,38 @@ class _AppWrapperState extends State<AppWrapper> with WidgetsBindingObserver {
     super.dispose();
   }
 
+  /// التحقق من كون المستخدم جديد
+  Future<void> _checkFirstTimeUser() async {
+    try {
+      final isFirstTime = await UserService().isFirstTimeUser();
+      
+      // تحميل بيانات المستخدم في الProvider
+      if (mounted) {
+        final userProvider = context.read<UserProvider>();
+        await userProvider.loadUserData();
+      }
+      
+      if (mounted) {
+        setState(() {
+          _showWelcome = isFirstTime;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      // في حالة الخطأ، اعرض شاشة الترحيب للأمان
+      if (mounted) {
+        setState(() {
+          _showWelcome = true;
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
-    
+  
     switch (state) {
       case AppLifecycleState.paused:
         // تنظيف عند الانتقال للخلفية
@@ -321,18 +331,7 @@ class _AppWrapperState extends State<AppWrapper> with WidgetsBindingObserver {
     }
   }
 
-  void _optimizeAppStart() {
-    // تنظيف الكاش القديم
-    CacheService().cleanupExpired();
-    
-    // تحسين الذاكرة للشاشة الرئيسية
-    MemoryManagerService().optimizeForScreen('home');
-  }
-
   void _performBackgroundCleanup() {
-    // تنظيف خفيف عند الانتقال للخلفية
-    CacheService().cleanupExpired();
-    
     if (kDebugMode) {
       debugPrint('🧹 Background cleanup performed');
     }
@@ -340,8 +339,13 @@ class _AppWrapperState extends State<AppWrapper> with WidgetsBindingObserver {
 
   void _refreshDataOnResume() {
     // إعادة تحميل البيانات عند العودة للتطبيق
-    final provider = context.read<TransactionProvider>();
-    provider.loadInitialData();
+    if (!_showWelcome && mounted) {
+      final transactionProvider = context.read<TransactionProvider>();
+      final userProvider = context.read<UserProvider>();
+      
+      transactionProvider.loadInitialData();
+      userProvider.loadUserData();
+    }
     
     if (kDebugMode) {
       debugPrint('🔄 Data refreshed on app resume');
@@ -349,9 +353,6 @@ class _AppWrapperState extends State<AppWrapper> with WidgetsBindingObserver {
   }
 
   void _performFinalCleanup() {
-    // تنظيف نهائي عند إغلاق التطبيق
-    MemoryManagerService().dispose();
-    
     if (kDebugMode) {
       debugPrint('👋 Final cleanup performed');
     }
@@ -359,7 +360,69 @@ class _AppWrapperState extends State<AppWrapper> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    return const HomeScreen();
+    // شاشة التحميل
+    if (_isLoading) {
+      return Scaffold(
+        backgroundColor: const Color(0xFFF5F2E9), // خلفية بيج فاتح
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // شعار التطبيق
+              Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [
+                      Color(0xFFC5D300), // أخضر فاتح
+                      Color(0xFFA5B800), // درجة أخضر أغمق قليلاً
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFFC5D300).withOpacity(0.3), // أخضر فاتح مع شفافية
+                      blurRadius: 16,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.account_balance_wallet_rounded,
+                  size: 40,
+                  color: Colors.white,
+                ),
+              ),
+              
+              const SizedBox(height: 24),
+              
+              // مؤشر التحميل
+              const CircularProgressIndicator(
+                color: Color(0xFFC5D300), // أخضر فاتح
+                strokeWidth: 3,
+              ),
+              
+              const SizedBox(height: 16),
+              
+              Text(
+                'جاري التحميل...',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: const Color(0xFF473D33).withOpacity(0.7), // بني داكن مع شفافية
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    
+    // عرض الشاشة المناسبة
+    return _showWelcome ? const WelcomeScreen() : const HomeScreen();
   }
 }
 
@@ -374,7 +437,7 @@ class ErrorApp extends StatelessWidget {
     return MaterialApp(
       title: 'خطأ في التطبيق',
       home: Scaffold(
-        backgroundColor: Colors.red[50],
+        backgroundColor: const Color(0xFFF5F2E9), // خلفية بيج فاتح
         body: Center(
           child: Padding(
             padding: const EdgeInsets.all(32),
@@ -384,60 +447,66 @@ class ErrorApp extends StatelessWidget {
                 Icon(
                   Icons.error_outline,
                   size: 64,
-                  color: Colors.red[700],
+                  color: const Color(0xFF473D33), // بني داكن
                 ),
+                
                 const SizedBox(height: 24),
+                
                 Text(
-                  'فشل في تشغيل التطبيق',
+                  'حدث خطأ في تهيئة التطبيق',
                   style: TextStyle(
-                    fontSize: 24,
+                    fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: Colors.red[700],
+                    color: const Color(0xFF473D33), // بني داكن
                   ),
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 16),
+                
+                const SizedBox(height: 12),
+                
                 Text(
-                  'نعتذر، حدث خطأ أثناء تشغيل التطبيق',
+                  'يرجى إعادة تشغيل التطبيق',
                   style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.red[600],
+                    fontSize: 14,
+                    color: const Color(0xFF473D33).withOpacity(0.7), // بني داكن مع شفافية
                   ),
                   textAlign: TextAlign.center,
                 ),
+                
+                const SizedBox(height: 24),
+                
+                ElevatedButton(
+                  onPressed: () {
+                    SystemChannels.platform.invokeMethod('SystemNavigator.pop');
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFC5D300), // أخضر فاتح
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: const Text('إعادة المحاولة'),
+                ),
+                
                 if (kDebugMode) ...[
                   const SizedBox(height: 24),
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.grey[100],
-                      borderRadius: BorderRadius.circular(12),
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
-                      error,
-                      style: const TextStyle(
+                      'تفاصيل الخطأ:\n$error',
+                      style: TextStyle(
                         fontSize: 12,
+                        color: const Color(0xFF473D33), // بني داكن
                         fontFamily: 'monospace',
                       ),
                     ),
                   ),
                 ],
-                const SizedBox(height: 32),
-                ElevatedButton(
-                  onPressed: () {
-                    // إعادة تشغيل التطبيق
-                    SystemChannels.platform.invokeMethod('SystemNavigator.pop');
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red[600],
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 32,
-                      vertical: 16,
-                    ),
-                  ),
-                  child: const Text('إعادة المحاولة'),
-                ),
               ],
             ),
           ),
