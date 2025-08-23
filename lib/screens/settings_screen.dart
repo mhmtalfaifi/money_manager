@@ -7,6 +7,7 @@ import '../providers/transaction_provider.dart';
 import '../utils/app_colors.dart';
 import '../helpers/database_helper.dart';
 import 'budget_screen.dart';
+import '../utils/app_constants.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});

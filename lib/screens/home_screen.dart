@@ -13,6 +13,8 @@ import 'history_screen.dart';
 import 'reports_screen.dart';
 import 'settings_screen.dart';
 import 'dart:math' as math;
+import '../utils/app_constants.dart';
+
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -338,7 +340,7 @@ class DashboardScreen extends StatelessWidget {
                     // Daily Expenses Card
                     Expanded(
                       child: _buildDailyExpenseCard(
-                        title: 'المصروفات اليومية',
+                        title: 'المصروفات',
                         amount: summary?.totalExpenses ?? 0,
                         color: Color(0xFFE3F2FD),
                         icon: Icons.show_chart_rounded,

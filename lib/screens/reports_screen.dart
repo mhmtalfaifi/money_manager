@@ -8,6 +8,8 @@ import '../providers/transaction_provider.dart';
 import '../models/transaction_model.dart';
 import '../utils/app_colors.dart';
 import '../widgets/stat_card.dart';
+import '../utils/app_constants.dart';
+
 
 class ReportsScreen extends StatefulWidget {
   const ReportsScreen({super.key});
@@ -208,7 +210,7 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
               Expanded(
                 child: StatCard(
                   title: 'معدل الادخار',
-                  value: '${summary.savingsRate.toStringAsFixed(1)}%',
+                  amount: summary.savingsRate,
                   icon: Icons.savings_rounded,
                   color: AppColors.success,
                   subtitle: 'من الدخل الشهري',
@@ -218,7 +220,7 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
               Expanded(
                 child: StatCard(
                   title: 'معدل الإنفاق',
-                  value: '${summary.expenseRate.toStringAsFixed(1)}%',
+                  amount: summary.expenseRate,
                   icon: Icons.trending_up_rounded,
                   color: AppColors.warning,
                   subtitle: 'من الدخل الشهري',
@@ -551,28 +553,6 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
   // الرسم البياني الدائري
   Widget _buildPieChart(MonthlySummary summary) {
     final data = summary.expensesByCategory.entries.toList();
-    if (data.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.pie_chart_rounded,
-              size: 48,
-              color: AppColors.primary.withOpacity(0.3),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'لا توجد بيانات للعرض',
-              style: TextStyle(
-                color: AppColors.textSecondary,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
     final colors = [
       AppColors.income,
       AppColors.expense,
@@ -585,7 +565,7 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
     return PieChart(
       PieChartData(
         sectionsSpace: 2,
-        centerSpaceRadius: 60,
+        centerSpaceRadius: 40,
         sections: data.asMap().entries.map((entry) {
           final index = entry.key;
           final category = entry.value;
@@ -595,7 +575,7 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
             color: colors[index % colors.length],
             value: category.value,
             title: percentage > 5 ? '${percentage.toStringAsFixed(0)}%' : '',
-            radius: 80,
+            radius: 100,
             titleStyle: const TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.bold,
@@ -609,34 +589,104 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
 
   // الرسم البياني الأفقي
   Widget _buildBarChart(MonthlySummary summary) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.analytics_rounded,
-            size: 48,
-            color: AppColors.primary.withOpacity(0.3),
+    final data = summary.expensesByCategory.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    
+    final topCategories = data.take(5).toList();
+
+    return BarChart(
+      BarChartData(
+        alignment: BarChartAlignment.spaceAround,
+        maxY: topCategories.isEmpty 
+            ? 100 
+            : topCategories.first.value * 1.2,
+        barTouchData: BarTouchData(
+          touchTooltipData: BarTouchTooltipData(
+            getTooltipColor: (group) => Colors.black87,
+            getTooltipItem: (group, groupIndex, rod, rodIndex) {
+              return BarTooltipItem(
+                '${topCategories[groupIndex].key}\n',
+                const TextStyle(color: Colors.white, fontSize: 12),
+                children: [
+                  TextSpan(
+                    text: AppConstants.formatMoney(rod.toY),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
-          const SizedBox(height: 12),
-          Text(
-            'الرسم البياني الأفقي',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textSecondary,
+        ),
+        titlesData: FlTitlesData(
+          leftTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              getTitlesWidget: (value, meta) {
+                return Text(
+                  '${(value / 1000).toStringAsFixed(0)}k',
+                  style: const TextStyle(fontSize: 10),
+                );
+              },
+              reservedSize: 30,
             ),
           ),
-          const SizedBox(height: 8),
-          Text(
-            'سيتم تفعيله في التحديثات القادمة',
-            style: TextStyle(
-              fontSize: 12,
-              color: AppColors.textSecondary,
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              getTitlesWidget: (value, meta) {
+                if (value.toInt() < topCategories.length) {
+                  final name = topCategories[value.toInt()].key;
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(
+                      name.length > 8 ? '${name.substring(0, 8)}...' : name,
+                      style: const TextStyle(fontSize: 10),
+                    ),
+                  );
+                }
+                return const Text('');
+              },
             ),
-            textAlign: TextAlign.center,
           ),
-        ],
+          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+        ),
+        gridData: FlGridData(
+          show: true,
+          drawVerticalLine: false,
+          horizontalInterval: 1000,
+          getDrawingHorizontalLine: (value) {
+            return FlLine(
+              color: Colors.grey[200]!,
+              strokeWidth: 1,
+            );
+          },
+        ),
+        borderData: FlBorderData(show: false),
+        barGroups: topCategories.asMap().entries.map((entry) {
+          return BarChartGroupData(
+            x: entry.key,
+            barRods: [
+              BarChartRodData(
+                toY: entry.value.value,
+                gradient: LinearGradient(
+                  colors: [
+                    AppColors.expense,
+                    AppColors.expense.withOpacity(0.7),
+                  ],
+                  begin: Alignment.bottomCenter,
+                  end: Alignment.topCenter,
+                ),
+                width: 20,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
+              ),
+            ],
+          );
+        }).toList(),
       ),
     );
   }
