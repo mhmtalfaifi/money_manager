@@ -447,7 +447,7 @@ class DashboardScreen extends StatelessWidget {
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: SvgPicture.asset(
-                            'assets/images/ehsan-logo.svg', // المسار إلى ملف SVG
+                            'assets/images/Ehsan-logo.svg', // المسار إلى ملف SVG
                             width: 32,
                             height: 32,
                             color: Colors.white,
