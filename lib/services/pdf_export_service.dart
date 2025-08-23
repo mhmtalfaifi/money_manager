@@ -5,6 +5,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:flutter/services.dart';
 import '../models/transaction_model.dart';
 import '../utils/app_colors.dart';
 import '../helpers/database_helper.dart';
@@ -14,22 +15,56 @@ class PdfExportService {
   static PdfExportService get instance => _instance;
   PdfExportService._internal();
 
+  // متغيرات للخط العربي
+  pw.Font? _arabicRegularFont;
+  pw.Font? _arabicBoldFont;
+
+  // دالة لتحميل الخطوط العربية
+  Future<void> _loadArabicFonts() async {
+    if (_arabicRegularFont != null && _arabicBoldFont != null) return;
+    
+    try {
+      // تحميل الخط العادي
+      final regularFontData = await rootBundle.load('assets/fonts/Amiri-Regular.ttf');
+      _arabicRegularFont = pw.Font.ttf(regularFontData);
+      
+      // تحميل الخط الغامق
+      final boldFontData = await rootBundle.load('assets/fonts/Amiri-Bold.ttf');
+      _arabicBoldFont = pw.Font.ttf(boldFontData);
+    } catch (e) {
+      print('فشل تحميل الخطوط العربية: $e');
+      // يمكنك إضافة خط افتراضي هنا إذا لزم الأمر
+    }
+  }
+
+  // دالة مساعدة لإنشاء أنماط النص بالخط العربي
+  pw.TextStyle _getArabicTextStyle({double fontSize = 12, bool bold = false, PdfColor? color}) {
+    return pw.TextStyle(
+      font: bold ? _arabicBoldFont : _arabicRegularFont,
+      fontSize: fontSize,
+      color: color,
+    );
+  }
+
   Future<String> exportToPdf(List<TransactionModel> transactions) async {
+    // تحميل الخطوط العربية أولاً
+    await _loadArabicFonts();
+    
     final pdf = pw.Document();
 
-    // Add cover page
+    // إضافة صفحة الغلاف
     _addCoverPage(pdf);
 
-    // Add summary page
+    // إضافة صفحة الملخص
     _addSummaryPage(pdf, transactions);
 
-    // Add transactions page
+    // إضافة صفحة العمليات
     _addTransactionsPage(pdf, transactions);
 
-    // Add statistics page
+    // إضافة صفحة الإحصائيات
     _addStatisticsPage(pdf, transactions);
 
-    // Save the file
+    // حفظ الملف
     final directory = await getApplicationDocumentsDirectory();
     final timestamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
     final filePath = '${directory.path}/money_manager_export_$timestamp.pdf';
@@ -51,24 +86,17 @@ class PdfExportService {
               children: [
                 pw.Text(
                   'التقرير المالي',
-                  style: pw.TextStyle(
-                    fontSize: 32,
-                    fontWeight: pw.FontWeight.bold,
-                    color: PdfColors.green,
-                  ),
+                  style: _getArabicTextStyle(fontSize: 32, bold: true, color: PdfColors.green),
                 ),
                 pw.SizedBox(height: 20),
                 pw.Text(
                   'مدير الأموال',
-                  style: pw.TextStyle(
-                    fontSize: 24,
-                    color: PdfColors.grey,
-                  ),
+                  style: _getArabicTextStyle(fontSize: 24, color: PdfColors.grey),
                 ),
                 pw.SizedBox(height: 40),
                 pw.Text(
                   'تاريخ التصدير: ${DateFormat('yyyy/MM/dd - HH:mm').format(DateTime.now())}',
-                  style: pw.TextStyle(fontSize: 16),
+                  style: _getArabicTextStyle(fontSize: 16),
                 ),
               ],
             ),
@@ -92,10 +120,7 @@ class PdfExportService {
               children: [
                 pw.Text(
                   'ملخص مالي',
-                  style: pw.TextStyle(
-                    fontSize: 24,
-                    fontWeight: pw.FontWeight.bold,
-                  ),
+                  style: _getArabicTextStyle(fontSize: 24, bold: true),
                 ),
                 pw.SizedBox(height: 30),
                 _buildSummaryItem('إجمالي الدخل', summary['totalIncome']),
@@ -107,10 +132,7 @@ class PdfExportService {
                 pw.SizedBox(height: 30),
                 pw.Text(
                   'ملخص الفئات',
-                  style: pw.TextStyle(
-                    fontSize: 18,
-                    fontWeight: pw.FontWeight.bold,
-                  ),
+                  style: _getArabicTextStyle(fontSize: 18, bold: true),
                 ),
                 pw.SizedBox(height: 15),
                 ..._buildCategorySummary(transactions),
@@ -134,10 +156,7 @@ class PdfExportService {
               children: [
                 pw.Text(
                   'تفاصيل العمليات',
-                  style: pw.TextStyle(
-                    fontSize: 24,
-                    fontWeight: pw.FontWeight.bold,
-                  ),
+                  style: _getArabicTextStyle(fontSize: 24, bold: true),
                 ),
                 pw.SizedBox(height: 20),
                 _buildTransactionsTable(transactions.take(20).toList()),
@@ -146,7 +165,7 @@ class PdfExportService {
                     padding: const pw.EdgeInsets.only(top: 10),
                     child: pw.Text(
                       'عرض ${20} من أصل ${transactions.length} عملية',
-                      style: pw.TextStyle(fontSize: 10, color: PdfColors.grey),
+                      style: _getArabicTextStyle(fontSize: 10, color: PdfColors.grey),
                     ),
                   ),
               ],
@@ -169,10 +188,7 @@ class PdfExportService {
               children: [
                 pw.Text(
                   'الإحصائيات',
-                  style: pw.TextStyle(
-                    fontSize: 24,
-                    fontWeight: pw.FontWeight.bold,
-                  ),
+                  style: _getArabicTextStyle(fontSize: 24, bold: true),
                 ),
                 pw.SizedBox(height: 30),
                 _buildTopCategoriesSection(transactions),
@@ -194,11 +210,11 @@ class PdfExportService {
         children: [
           pw.Text(
             label,
-            style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold),
+            style: _getArabicTextStyle(fontSize: 14, bold: true),
           ),
           pw.Text(
             value.toString(),
-            style: pw.TextStyle(fontSize: 14),
+            style: _getArabicTextStyle(fontSize: 14),
           ),
         ],
       ),
@@ -213,9 +229,9 @@ class PdfExportService {
         child: pw.Row(
           mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
           children: [
-            pw.Text(entry.key, style: pw.TextStyle(fontSize: 12)),
+            pw.Text(entry.key, style: _getArabicTextStyle(fontSize: 12)),
             pw.Text('${entry.value.toStringAsFixed(2)} ر.س', 
-                   style: pw.TextStyle(fontSize: 12)),
+                   style: _getArabicTextStyle(fontSize: 12)),
           ],
         ),
       ),
@@ -238,19 +254,19 @@ class PdfExportService {
           children: [
             pw.Padding(
               padding: const pw.EdgeInsets.all(8),
-              child: pw.Text('الوصف', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+              child: pw.Text('الوصف', style: _getArabicTextStyle(fontSize: 12, bold: true)),
             ),
             pw.Padding(
               padding: const pw.EdgeInsets.all(8),
-              child: pw.Text('النوع', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+              child: pw.Text('النوع', style: _getArabicTextStyle(fontSize: 12, bold: true)),
             ),
             pw.Padding(
               padding: const pw.EdgeInsets.all(8),
-              child: pw.Text('المبلغ', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+              child: pw.Text('المبلغ', style: _getArabicTextStyle(fontSize: 12, bold: true)),
             ),
             pw.Padding(
               padding: const pw.EdgeInsets.all(8),
-              child: pw.Text('التاريخ', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+              child: pw.Text('التاريخ', style: _getArabicTextStyle(fontSize: 12, bold: true)),
             ),
           ],
         ),
@@ -259,21 +275,21 @@ class PdfExportService {
           children: [
             pw.Padding(
               padding: const pw.EdgeInsets.all(6),
-              child: pw.Text(transaction.description, style: pw.TextStyle(fontSize: 10)),
+              child: pw.Text(transaction.description, style: _getArabicTextStyle(fontSize: 10)),
             ),
             pw.Padding(
               padding: const pw.EdgeInsets.all(6),
-              child: pw.Text(_getTypeLabel(transaction.type), style: pw.TextStyle(fontSize: 10)),
+              child: pw.Text(_getTypeLabel(transaction.type), style: _getArabicTextStyle(fontSize: 10)),
             ),
             pw.Padding(
               padding: const pw.EdgeInsets.all(6),
               child: pw.Text('${transaction.amount.toStringAsFixed(2)} ر.س', 
-                           style: pw.TextStyle(fontSize: 10)),
+                           style: _getArabicTextStyle(fontSize: 10)),
             ),
             pw.Padding(
               padding: const pw.EdgeInsets.all(6),
               child: pw.Text(DateFormat('yyyy/MM/dd').format(transaction.date), 
-                           style: pw.TextStyle(fontSize: 10)),
+                           style: _getArabicTextStyle(fontSize: 10)),
             ),
           ],
         )),
@@ -288,7 +304,7 @@ class PdfExportService {
       children: [
         pw.Text(
           'أكثر الفئات إنفاقاً',
-          style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold),
+          style: _getArabicTextStyle(fontSize: 18, bold: true),
         ),
         pw.SizedBox(height: 15),
         ...topCategories.map((category) => pw.Padding(
@@ -296,9 +312,9 @@ class PdfExportService {
           child: pw.Row(
             mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
             children: [
-              pw.Text(category['category'], style: pw.TextStyle(fontSize: 12)),
+              pw.Text(category['category'], style: _getArabicTextStyle(fontSize: 12)),
               pw.Text('${category['amount'].toStringAsFixed(2)} ر.س', 
-                     style: pw.TextStyle(fontSize: 12)),
+                     style: _getArabicTextStyle(fontSize: 12)),
             ],
           ),
         )),
@@ -313,7 +329,7 @@ class PdfExportService {
       children: [
         pw.Text(
           'أكثر المدن إنفاقاً',
-          style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold),
+          style: _getArabicTextStyle(fontSize: 18, bold: true),
         ),
         pw.SizedBox(height: 15),
         ...topCities.map((city) => pw.Padding(
@@ -321,9 +337,9 @@ class PdfExportService {
           child: pw.Row(
             mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
             children: [
-              pw.Text(city['city'], style: pw.TextStyle(fontSize: 12)),
+              pw.Text(city['city'], style: _getArabicTextStyle(fontSize: 12)),
               pw.Text('${city['amount'].toStringAsFixed(2)} ر.س', 
-                     style: pw.TextStyle(fontSize: 12)),
+                     style: _getArabicTextStyle(fontSize: 12)),
             ],
           ),
         )),
@@ -331,6 +347,7 @@ class PdfExportService {
     );
   }
 
+  // باقي الدوال تبقى كما هي بدون تغيير...
   Map<String, dynamic> _calculateSummary(List<TransactionModel> transactions) {
     double totalIncome = 0;
     double totalExpenses = 0;
@@ -421,7 +438,6 @@ class PdfExportService {
     }
   }
 
-  // دالة مساعدة للحصول على البيانات المصفاة
   Future<List<TransactionModel>> _getFilteredTransactions({
     required DatabaseHelper db,
     DateTime? startDate,
@@ -433,7 +449,6 @@ class PdfExportService {
     try {
       List<TransactionModel> transactions = await db.getAllTransactions();
       
-      // تطبيق المرشحات
       if (startDate != null) {
         transactions = transactions.where((t) => 
             t.date.isAfter(startDate.subtract(const Duration(days: 1)))).toList();
@@ -465,7 +480,6 @@ class PdfExportService {
     }
   }
 
-  // دالة التصدير مع المرشحات
   Future<String> exportToPdfWithFilters({
     DateTime? startDate, 
     DateTime? endDate,
@@ -475,7 +489,8 @@ class PdfExportService {
     required DatabaseHelper db,
   }) async {
     try {
-      // الحصول على البيانات المصفاة
+      await _loadArabicFonts();
+      
       List<TransactionModel> transactions = await _getFilteredTransactions(
         db: db,
         startDate: startDate,
@@ -489,7 +504,6 @@ class PdfExportService {
         throw Exception('لا توجد بيانات للتصدير');
       }
 
-      // إنشاء ملف PDF
       return await exportToPdf(transactions);
     } catch (e) {
       throw Exception('فشل في تصدير PDF: $e');

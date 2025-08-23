@@ -30,39 +30,39 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Consumer<TransactionProvider>(
-        builder: (context, provider, child) {
-          var transactions = provider.transactions;
-          
-          // تطبيق البحث والفلترة
-          if (_searchQuery.isNotEmpty) {
-            transactions = provider.searchTransactions(_searchQuery);
-          }
-          
-          if (_filterType != null || _filterCategory != null) {
-            transactions = provider.filterTransactions(
-              type: _filterType,
-              category: _filterCategory,
-            );
-          }
-
-          // تجميع المعاملات حسب التاريخ
-          final Map<String, List<TransactionModel>> groupedTransactions = {};
-          for (var transaction in transactions) {
-            final dateKey = DateFormat('yyyy-MM-dd').format(transaction.date);
-            if (!groupedTransactions.containsKey(dateKey)) {
-              groupedTransactions[dateKey] = [];
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: Consumer<TransactionProvider>(
+          builder: (context, provider, child) {
+            var transactions = provider.transactions;
+            
+            // تطبيق البحث والفلترة
+            if (_searchQuery.isNotEmpty) {
+              transactions = provider.searchTransactions(_searchQuery);
             }
-            groupedTransactions[dateKey]!.add(transaction);
-          }
+            
+            if (_filterType != null || _filterCategory != null) {
+              transactions = provider.filterTransactions(
+                type: _filterType,
+                category: _filterCategory,
+              );
+            }
 
-          final sortedDates = groupedTransactions.keys.toList()
-            ..sort((a, b) => b.compareTo(a));
+            // تجميع المعاملات حسب التاريخ
+            final Map<String, List<TransactionModel>> groupedTransactions = {};
+            for (var transaction in transactions) {
+              final dateKey = DateFormat('yyyy-MM-dd').format(transaction.date);
+              if (!groupedTransactions.containsKey(dateKey)) {
+                groupedTransactions[dateKey] = [];
+              }
+              groupedTransactions[dateKey]!.add(transaction);
+            }
 
-          return Scaffold(
-            backgroundColor: AppColors.background,
-            body: Column(
+            final sortedDates = groupedTransactions.keys.toList()
+              ..sort((a, b) => b.compareTo(a));
+
+            return Column(
               children: [
                 // شريط البحث والفلترة
                 Container(
@@ -260,9 +260,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
                         ),
                 ),
               ],
-            ),
-          );
-        },
+            );
+          },
+        ),
       ),
     );
   }

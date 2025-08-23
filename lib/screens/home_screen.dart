@@ -27,6 +27,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   int _currentIndex = 0;
   late AnimationController _animationController;
   late Animation<double> _scaleAnimation;
+  bool _isInitialLoad = true;
   
   final List<Widget> _screens = [
     const DashboardScreen(),
@@ -39,12 +40,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   void initState() {
     super.initState();
     
-    // تحميل البيانات الأولية
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<TransactionProvider>().loadInitialData();
-      context.read<UserProvider>().loadUserData();
-    });
-    
     // إعداد التحكم في الرسوم المتحركة
     _animationController = AnimationController(
       vsync: this,
@@ -54,6 +49,33 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     _scaleAnimation = Tween<double>(begin: 1.0, end: 0.95).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.easeInOut)
     );
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    
+    // تحميل البيانات الأولية عندما يكون context جاهزاً
+    if (_isInitialLoad) {
+      _isInitialLoad = false;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _loadInitialData();
+      });
+    }
+  }
+
+  void _loadInitialData() {
+    final transactionProvider = context.read<TransactionProvider>();
+    final userProvider = context.read<UserProvider>();
+    
+    // تحميل البيانات إذا لم تكن محملة بالفعل
+    if (transactionProvider.transactions.isEmpty) {
+      transactionProvider.loadInitialData();
+    }
+    
+    if (userProvider.userName.isEmpty) {
+      userProvider.loadUserData();
+    }
   }
 
   @override
@@ -249,6 +271,19 @@ class DashboardScreen extends StatelessWidget {
     return SafeArea(
       child: Consumer2<TransactionProvider, UserProvider>(
         builder: (context, provider, userProvider, child) {
+          // إعادة تحميل البيانات إذا كانت فارغة
+          if (provider.transactions.isEmpty) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              provider.loadInitialData();
+            });
+          }
+
+          if (userProvider.userName.isEmpty) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              userProvider.loadUserData();
+            });
+          }
+
           if (provider.isLoading) {
             return const Center(
               child: CircularProgressIndicator(color: AppColors.primary),
@@ -308,7 +343,7 @@ class DashboardScreen extends StatelessWidget {
                             builder: (context, userProvider, child) {
                               return Text(
                                 userProvider.welcomeMessage ?? 
-                                'مرحباً، ${userProvider.userName}',
+                                'مرحباً، ${userProvider.userName.isNotEmpty ? userProvider.userName : "مستخدم"}',
                                 style: TextStyle(
                                   fontSize: 24,
                                   fontWeight: FontWeight.bold,
@@ -376,11 +411,11 @@ class DashboardScreen extends StatelessWidget {
                 const SizedBox(height: 32),
                 
                 // بطاقة التبرع عبر إحسان
-                   InkWell(
+                InkWell(
                   onTap: () => _openEhsanPlatform(context),
                   borderRadius: BorderRadius.circular(20),
-                  splashColor: Color(0xFF013F6D).withOpacity(0.2),
-                  highlightColor: Color(0xFF013F6D).withOpacity(0.1),
+                  splashColor: const Color(0xFF013F6D).withOpacity(0.2),
+                  highlightColor: const Color(0xFF013F6D).withOpacity(0.1),
                   child: Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(20),
@@ -396,7 +431,7 @@ class DashboardScreen extends StatelessWidget {
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: Color(0xFF013F6D).withOpacity(0.3),
+                          color: const Color(0xFF013F6D).withOpacity(0.3),
                           blurRadius: 15,
                           offset: const Offset(0, 6),
                         ),
@@ -423,7 +458,7 @@ class DashboardScreen extends StatelessWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
+                              const Text(
                                 'التبرع عبر منصة إحسان',
                                 style: TextStyle(
                                   color: Colors.white,
@@ -448,7 +483,6 @@ class DashboardScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 32),
-                
                 
                 // Remaining Balance Section
                 Container(
