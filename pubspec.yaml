@@ -4,14 +4,13 @@ publish_to: 'none'
 version: 1.0.0+1
 
 environment:
-  sdk: '>=3.0.0 <4.0.0'
+  sdk: '>=3.0.0 <4.0.0'  # ← سطر واحد فقط
 
 dependencies:
   flutter:
     sdk: flutter
   flutter_localizations:
     sdk: flutter
-    
   # قاعدة البيانات
   sqflite: ^2.3.0
   path: ^1.8.3
@@ -23,6 +22,8 @@ dependencies:
   intl: 0.20.2
   flutter_svg: ^2.0.9
   
+  shared_preferences: ^2.2.2
+
   # الرسوم البيانية
   fl_chart: ^0.66.2
   
@@ -44,6 +45,11 @@ dependencies:
   # Google Fonts للخطوط
   google_fonts: ^6.1.0
 
+  # أضف المكتبات الجديدة هنا
+  syncfusion_flutter_xlsio: ^29.2.11  # ← غيرت هذا السطر
+  file_picker: 10.3.2
+  url_launcher: ^6.2.6
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -51,5 +57,4 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
-  
   # إضافة الخطوط

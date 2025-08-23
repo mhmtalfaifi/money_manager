@@ -26,166 +26,226 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final provider = context.watch<TransactionProvider>();
     
     return SafeArea(
-      child: ListView(
-        padding: const EdgeInsets.all(16),
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        body: ListView(
+          padding: const EdgeInsets.all(20),
+          children: [
+            const Text(
+              'الإعدادات',
+              style: TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 24),
+            
+            // قسم الإحصائيات السريعة
+            _buildQuickStats(provider),
+            const SizedBox(height: 24),
+            
+            // قسم الميزانيات
+            _buildSection(
+              title: 'الميزانيات والأهداف',
+              icon: Icons.account_balance_wallet_rounded,
+              children: [
+                _buildSettingsItem(
+                  icon: Icons.account_balance_wallet_rounded,
+                  title: 'إدارة الميزانيات',
+                  subtitle: 'حدد ميزانية شهرية لكل فئة',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const BudgetScreen(),
+                      ),
+                    );
+                  },
+                ),
+                _buildSwitchItem(
+                  icon: Icons.notifications_active_rounded,
+                  title: 'تنبيهات الميزانية',
+                  subtitle: 'تنبيه عند تجاوز 80% من الميزانية',
+                  value: _budgetAlerts,
+                  onChanged: (value) {
+                    setState(() => _budgetAlerts = value);
+                  },
+                ),
+              ],
+            ),
+            
+            // قسم التطبيق
+            _buildSection(
+              title: 'التطبيق',
+              icon: Icons.settings_rounded,
+              children: [
+                _buildSwitchItem(
+                  icon: Icons.dark_mode_rounded,
+                  title: 'الوضع الليلي',
+                  subtitle: 'تفعيل الوضع الداكن',
+                  value: _isDarkMode,
+                  onChanged: (value) {
+                    setState(() => _isDarkMode = value);
+                  },
+                ),
+                _buildSwitchItem(
+                  icon: Icons.notifications_outlined,
+                  title: 'الإشعارات',
+                  subtitle: 'تفعيل جميع الإشعارات',
+                  value: _notificationsEnabled,
+                  onChanged: (value) {
+                    setState(() => _notificationsEnabled = value);
+                  },
+                ),
+                _buildSettingsItem(
+                  icon: Icons.language_rounded,
+                  title: 'اللغة',
+                  subtitle: 'العربية',
+                  onTap: () {
+                    // يمكن إضافة اختيار اللغة
+                  },
+                ),
+              ],
+            ),
+            
+            // قسم البيانات
+            _buildSection(
+              title: 'البيانات',
+              icon: Icons.storage_rounded,
+              children: [
+                _buildSettingsItem(
+                  icon: Icons.cloud_upload_rounded,
+                  title: 'النسخ الاحتياطي',
+                  subtitle: 'آخر نسخة: ${DateFormat('yyyy/MM/dd - HH:mm').format(DateTime.now())}',
+                  onTap: () => _showBackupDialog(context),
+                ),
+                _buildSettingsItem(
+                  icon: Icons.download_rounded,
+                  title: 'تصدير البيانات',
+                  subtitle: 'تصدير كملف Excel أو PDF',
+                  onTap: () => _showExportDialog(context),
+                ),
+                _buildSettingsItem(
+                  icon: Icons.delete_outline_rounded,
+                  title: 'مسح جميع البيانات',
+                  subtitle: 'حذف جميع العمليات والبيانات',
+                  color: AppColors.error,
+                  onTap: () => _showDeleteDataDialog(context),
+                ),
+              ],
+            ),
+            
+            // قسم الفئات والمدن
+            _buildSection(
+              title: 'الفئات والمدن',
+              icon: Icons.category_rounded,
+              children: [
+                _buildSettingsItem(
+                  icon: Icons.category_rounded,
+                  title: 'إدارة الفئات',
+                  subtitle: '${provider.categories.length} فئة',
+                  onTap: () => _showCategoriesDialog(context, provider),
+                ),
+                _buildSettingsItem(
+                  icon: Icons.location_city_rounded,
+                  title: 'إدارة المدن',
+                  subtitle: '${provider.cities.length} مدينة',
+                  onTap: () => _showCitiesDialog(context, provider),
+                ),
+              ],
+            ),
+            
+            // قسم حول
+            _buildSection(
+              title: 'حول التطبيق',
+              icon: Icons.info_outline_rounded,
+              children: [
+                _buildSettingsItem(
+                  icon: Icons.help_outline_rounded,
+                  title: 'المساعدة والدعم',
+                  subtitle: 'دليل استخدام التطبيق',
+                  onTap: () {
+                    // يمكن إضافة صفحة المساعدة
+                  },
+                ),
+                _buildSettingsItem(
+                  icon: Icons.star_outline_rounded,
+                  title: 'تقييم التطبيق',
+                  subtitle: 'ساعدنا بتقييمك',
+                  onTap: () {
+                    // يمكن إضافة رابط التقييم
+                  },
+                ),
+                _buildSettingsItem(
+                  icon: Icons.info_outline_rounded,
+                  title: 'حول التطبيق',
+                  subtitle: 'الإصدار 1.0.0',
+                  onTap: () => _showAboutDialog(context),
+                ),
+              ],
+            ),
+            
+            const SizedBox(height: 40),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuickStats(TransactionProvider provider) {
+    final summary = provider.monthlySummary;
+    if (summary == null) return const SizedBox.shrink();
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            AppColors.primary,
+            AppColors.primary.withOpacity(0.8),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withOpacity(0.3),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'الإعدادات',
+            'ملخص الشهر الحالي',
             style: TextStyle(
-              fontSize: 24,
+              color: Colors.white,
+              fontSize: 18,
               fontWeight: FontWeight.bold,
             ),
           ),
-          const SizedBox(height: 24),
-          
-          // قسم الإحصائيات السريعة
-          _buildQuickStats(provider),
-          
-          // قسم الميزانيات
-          _buildSection(
-            title: 'الميزانيات والأهداف',
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              ListTile(
-                leading: const Icon(Icons.account_balance_wallet),
-                title: const Text('إدارة الميزانيات'),
-                subtitle: const Text('حدد ميزانية شهرية لكل فئة'),
-                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const BudgetScreen(),
-                    ),
-                  );
-                },
+              _buildStatItem(
+                'الدخل',
+                AppConstants.formatMoney(summary.totalIncome),
+                Icons.arrow_downward_rounded,
               ),
-              SwitchListTile(
-                secondary: const Icon(Icons.notifications_active),
-                title: const Text('تنبيهات الميزانية'),
-                subtitle: const Text('تنبيه عند تجاوز 80% من الميزانية'),
-                value: _budgetAlerts,
-                onChanged: (value) {
-                  setState(() => _budgetAlerts = value);
-                },
+              _buildStatItem(
+                'المصروفات',
+                AppConstants.formatMoney(summary.totalExpenses),
+                Icons.arrow_upward_rounded,
               ),
-            ],
-          ),
-          
-          // قسم التطبيق
-          _buildSection(
-            title: 'التطبيق',
-            children: [
-              SwitchListTile(
-                secondary: const Icon(Icons.dark_mode),
-                title: const Text('الوضع الليلي'),
-                subtitle: const Text('تفعيل الوضع الداكن'),
-                value: _isDarkMode,
-                onChanged: (value) {
-                  setState(() => _isDarkMode = value);
-                  // يمكن إضافة تغيير الثيم هنا
-                },
-              ),
-              SwitchListTile(
-                secondary: const Icon(Icons.notifications_outlined),
-                title: const Text('الإشعارات'),
-                subtitle: const Text('تفعيل جميع الإشعارات'),
-                value: _notificationsEnabled,
-                onChanged: (value) {
-                  setState(() => _notificationsEnabled = value);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.language),
-                title: const Text('اللغة'),
-                subtitle: const Text('العربية'),
-                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                onTap: () {
-                  // يمكن إضافة اختيار اللغة
-                },
-              ),
-            ],
-          ),
-          
-          // قسم البيانات
-          _buildSection(
-            title: 'البيانات',
-            children: [
-              ListTile(
-                leading: const Icon(Icons.cloud_upload_outlined),
-                title: const Text('النسخ الاحتياطي'),
-                subtitle: Text(
-                  'آخر نسخة: ${DateFormat('yyyy/MM/dd - HH:mm').format(DateTime.now())}',
-                ),
-                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                onTap: () => _showBackupDialog(context),
-              ),
-              ListTile(
-                leading: const Icon(Icons.download_outlined),
-                title: const Text('تصدير البيانات'),
-                subtitle: const Text('تصدير كملف Excel أو PDF'),
-                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                onTap: () => _showExportDialog(context),
-              ),
-              ListTile(
-                leading: const Icon(Icons.delete_outline, color: AppColors.error),
-                title: const Text(
-                  'مسح جميع البيانات',
-                  style: TextStyle(color: AppColors.error),
-                ),
-                subtitle: const Text('حذف جميع العمليات والبيانات'),
-                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                onTap: () => _showDeleteDataDialog(context),
-              ),
-            ],
-          ),
-          
-          // قسم الفئات والمدن
-          _buildSection(
-            title: 'الفئات والمدن',
-            children: [
-              ListTile(
-                leading: const Icon(Icons.category),
-                title: const Text('إدارة الفئات'),
-                subtitle: Text('${provider.categories.length} فئة'),
-                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                onTap: () => _showCategoriesDialog(context, provider),
-              ),
-              ListTile(
-                leading: const Icon(Icons.location_city),
-                title: const Text('إدارة المدن'),
-                subtitle: Text('${provider.cities.length} مدينة'),
-                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                onTap: () => _showCitiesDialog(context, provider),
-              ),
-            ],
-          ),
-          
-          // قسم حول
-          _buildSection(
-            title: 'حول',
-            children: [
-              ListTile(
-                leading: const Icon(Icons.help_outline),
-                title: const Text('المساعدة والدعم'),
-                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                onTap: () {
-                  // يمكن إضافة صفحة المساعدة
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.star_outline),
-                title: const Text('تقييم التطبيق'),
-                subtitle: const Text('ساعدنا بتقييمك'),
-                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                onTap: () {
-                  // يمكن إضافة رابط التقييم
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.info_outline),
-                title: const Text('حول التطبيق'),
-                subtitle: const Text('الإصدار 1.0.0'),
-                onTap: () => _showAboutDialog(context),
+              _buildStatItem(
+                'المتبقي',
+                AppConstants.formatMoney(summary.balance),
+                Icons.account_balance_wallet_rounded,
               ),
             ],
           ),
@@ -194,29 +254,241 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  Widget _buildStatItem(String title, String value, IconData icon) {
+    return Column(
+      children: [
+        Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.2),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, color: Colors.white, size: 20),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          value,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          title,
+          style: const TextStyle(
+            color: Colors.white70,
+            fontSize: 12,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSection({
+    required String title,
+    required IconData icon,
+    required List<Widget> children,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
+          child: Row(
+            children: [
+              Icon(icon, size: 20, color: AppColors.primary),
+              const SizedBox(width: 8),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+            ],
+          ),
+        ),
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(children: children),
+        ),
+        const SizedBox(height: 24),
+      ],
+    );
+  }
+
+  Widget _buildSettingsItem({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+    Color? color,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: (color ?? AppColors.primary).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  icon,
+                  color: color ?? AppColors.primary,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: color ?? Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.arrow_forward_ios_rounded,
+                size: 16,
+                color: Colors.grey[400],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSwitchItem({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                icon,
+                color: AppColors.primary,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Switch(
+              value: value,
+              onChanged: onChanged,
+              activeColor: AppColors.primary,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _showCategoriesDialog(BuildContext context, TransactionProvider provider) {
     showDialog(
       context: context,
       builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         child: Container(
           constraints: const BoxConstraints(maxHeight: 500),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Padding(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(20),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     const Text(
                       'إدارة الفئات',
                       style: TextStyle(
-                        fontSize: 18,
+                        fontSize: 20,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.add),
+                      icon: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: AppColors.primary,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(Icons.add, color: Colors.white, size: 20),
+                      ),
                       onPressed: () => _showAddCategoryDialog(context),
                     ),
                   ],
@@ -225,39 +497,71 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const Divider(height: 1),
               Expanded(
                 child: ListView.builder(
+                  padding: const EdgeInsets.all(16),
                   itemCount: provider.categories.length,
                   itemBuilder: (context, index) {
                     final category = provider.categories[index];
-                    return ListTile(
-                      leading: Icon(
-                        AppColors.getTransactionIcon(category.type),
-                        color: AppColors.getTransactionColor(category.type),
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[50],
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      title: Text(category.name),
-                      subtitle: Text(
-                        category.type == 'income' ? 'دخل' :
-                        category.type == 'expense' ? 'مصروف' : 'التزام',
+                      child: ListTile(
+                        leading: Icon(
+                          AppColors.getTransactionIcon(category.type),
+                          color: AppColors.getTransactionColor(category.type),
+                        ),
+                        title: Text(category.name),
+                        subtitle: Text(
+                          category.type == 'income' ? 'دخل' :
+                          category.type == 'expense' ? 'مصروف' : 'التزام',
+                        ),
+                        trailing: category.isDefault
+                            ? Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Text(
+                                  'افتراضي',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: AppColors.primary,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              )
+                            : IconButton(
+                                icon: const Icon(Icons.delete_outline_rounded, size: 20),
+                                onPressed: () {
+                                  // يمكن إضافة حذف الفئة
+                                },
+                              ),
                       ),
-                      trailing: category.isDefault
-                          ? const Chip(
-                              label: Text('افتراضي', style: TextStyle(fontSize: 10)),
-                              padding: EdgeInsets.zero,
-                            )
-                          : IconButton(
-                              icon: const Icon(Icons.delete, size: 20),
-                              onPressed: () {
-                                // يمكن إضافة حذف الفئة
-                              },
-                            ),
                     );
                   },
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.all(16),
-                child: TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('إغلاق'),
+                padding: const EdgeInsets.all(20),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text(
+                      'إغلاق',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -273,54 +577,99 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     showDialog(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('إضافة فئة جديدة'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              autofocus: true,
-              decoration: const InputDecoration(
-                labelText: 'اسم الفئة',
-                hintText: 'مثال: رياضة',
+      builder: (dialogContext) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'إضافة فئة جديدة',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-              onChanged: (value) => name = value,
-            ),
-            const SizedBox(height: 16),
-            DropdownButtonFormField<String>(
-              value: type,
-              decoration: const InputDecoration(
-                labelText: 'النوع',
+              const SizedBox(height: 20),
+              TextField(
+                autofocus: true,
+                decoration: InputDecoration(
+                  labelText: 'اسم الفئة',
+                  hintText: 'مثال: رياضة',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  filled: true,
+                  fillColor: Colors.grey[50],
+                ),
+                onChanged: (value) => name = value,
               ),
-              items: const [
-                DropdownMenuItem(value: 'income', child: Text('دخل')),
-                DropdownMenuItem(value: 'expense', child: Text('مصروف')),
-                DropdownMenuItem(value: 'commitment', child: Text('التزام')),
-              ],
-              onChanged: (value) => type = value!,
-            ),
-          ],
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                value: type,
+                decoration: InputDecoration(
+                  labelText: 'النوع',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  filled: true,
+                  fillColor: Colors.grey[50],
+                ),
+                items: const [
+                  DropdownMenuItem(value: 'income', child: Text('دخل')),
+                  DropdownMenuItem(value: 'expense', child: Text('مصروف')),
+                  DropdownMenuItem(value: 'commitment', child: Text('التزام')),
+                ],
+                onChanged: (value) => type = value!,
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(dialogContext),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text('إلغاء'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        if (name != null && name!.isNotEmpty) {
+                          final provider = context.read<TransactionProvider>();
+                          await provider.addCategory(name!, type);
+                          if (dialogContext.mounted) {
+                            Navigator.pop(dialogContext);
+                            Navigator.pop(context);
+                            _showCategoriesDialog(context, provider);
+                          }
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'إضافة',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('إلغاء'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              if (name != null && name!.isNotEmpty) {
-                final provider = context.read<TransactionProvider>();
-                await provider.addCategory(name!, type);
-                if (dialogContext.mounted) {
-                  Navigator.pop(dialogContext);
-                  Navigator.pop(context);
-                  _showCategoriesDialog(context, provider);
-                }
-              }
-            },
-            child: const Text('إضافة'),
-          ),
-        ],
       ),
     );
   }
@@ -329,25 +678,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
     showDialog(
       context: context,
       builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         child: Container(
           constraints: const BoxConstraints(maxHeight: 500),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Padding(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(20),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     const Text(
                       'إدارة المدن',
                       style: TextStyle(
-                        fontSize: 18,
+                        fontSize: 20,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.add),
+                      icon: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: AppColors.primary,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(Icons.add, color: Colors.white, size: 20),
+                      ),
                       onPressed: () => _showAddCityDialog(context),
                     ),
                   ],
@@ -356,35 +714,67 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const Divider(height: 1),
               Expanded(
                 child: ListView.builder(
+                  padding: const EdgeInsets.all(16),
                   itemCount: provider.cities.length,
                   itemBuilder: (context, index) {
                     final city = provider.cities[index];
-                    return ListTile(
-                      leading: const Icon(
-                        Icons.location_city,
-                        color: AppColors.primary,
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[50],
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      title: Text(city.name),
-                      trailing: city.isDefault
-                          ? const Chip(
-                              label: Text('افتراضي', style: TextStyle(fontSize: 10)),
-                              padding: EdgeInsets.zero,
-                            )
-                          : IconButton(
-                              icon: const Icon(Icons.delete, size: 20),
-                              onPressed: () {
-                                // يمكن إضافة حذف المدينة
-                              },
-                            ),
+                      child: ListTile(
+                        leading: const Icon(
+                          Icons.location_city_rounded,
+                          color: AppColors.primary,
+                        ),
+                        title: Text(city.name),
+                        trailing: city.isDefault
+                            ? Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Text(
+                                  'افتراضي',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: AppColors.primary,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              )
+                            : IconButton(
+                                icon: const Icon(Icons.delete_outline_rounded, size: 20),
+                                onPressed: () {
+                                  // يمكن إضافة حذف المدينة
+                                },
+                              ),
+                      ),
                     );
                   },
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.all(16),
-                child: TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('إغلاق'),
+                padding: const EdgeInsets.all(20),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text(
+                      'إغلاق',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -399,36 +789,81 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     showDialog(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('إضافة مدينة جديدة'),
-        content: TextField(
-          autofocus: true,
-          decoration: const InputDecoration(
-            labelText: 'اسم المدينة',
-            hintText: 'مثال: الطائف',
+      builder: (dialogContext) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'إضافة مدينة جديدة',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 20),
+              TextField(
+                autofocus: true,
+                decoration: InputDecoration(
+                  labelText: 'اسم المدينة',
+                  hintText: 'مثال: الطائف',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  filled: true,
+                  fillColor: Colors.grey[50],
+                ),
+                onChanged: (value) => name = value,
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(dialogContext),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text('إلغاء'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        if (name != null && name!.isNotEmpty) {
+                          final provider = context.read<TransactionProvider>();
+                          await provider.addCity(name!);
+                          if (dialogContext.mounted) {
+                            Navigator.pop(dialogContext);
+                            Navigator.pop(context);
+                            _showCitiesDialog(context, provider);
+                          }
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'إضافة',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-          onChanged: (value) => name = value,
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('إلغاء'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              if (name != null && name!.isNotEmpty) {
-                final provider = context.read<TransactionProvider>();
-                await provider.addCity(name!);
-                if (dialogContext.mounted) {
-                  Navigator.pop(dialogContext);
-                  Navigator.pop(context);
-                  _showCitiesDialog(context, provider);
-                }
-              }
-            },
-            child: const Text('إضافة'),
-          ),
-        ],
       ),
     );
   }
@@ -436,188 +871,210 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void _showAboutDialog(BuildContext context) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('حول التطبيق'),
-        content: const Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.account_balance_wallet,
-              size: 64,
-              color: AppColors.primary,
-            ),
-            SizedBox(height: 16),
-            Text(
-              'مدير الأموال',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            SizedBox(height: 8),
-            Text(
-              'الإصدار 1.0.0',
-              style: TextStyle(color: AppColors.textSecondary),
-            ),
-            SizedBox(height: 16),
-            Text(
-              'تطبيق سهل وبسيط لإدارة أموالك الشخصية',
-              textAlign: TextAlign.center,
-            ),
-            SizedBox(height: 8),
-            Text(
-              'صُمم بكل حب ❤️',
-              style: TextStyle(fontSize: 12),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('إغلاق'),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-  Widget _buildQuickStats(TransactionProvider provider) {
-    final summary = provider.monthlySummary;
-    if (summary == null) return const SizedBox.shrink();
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            AppColors.primary,
-            AppColors.primary.withBlue(150),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'ملخص الشهر الحالي',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              _buildStatItem(
-                'الدخل',
-                AppConstants.formatMoney(summary.totalIncome),
-                Icons.arrow_downward,
+              Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  color: AppColors.primary,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Icon(
+                  Icons.account_balance_wallet_rounded,
+                  size: 40,
+                  color: Colors.white,
+                ),
               ),
-              _buildStatItem(
-                'المصروفات',
-                AppConstants.formatMoney(summary.totalExpenses),
-                Icons.arrow_upward,
+              const SizedBox(height: 20),
+              const Text(
+                'مدير الأموال',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-              _buildStatItem(
-                'المتبقي',
-                AppConstants.formatMoney(summary.balance),
-                Icons.account_balance_wallet,
+              const SizedBox(height: 8),
+              const Text(
+                'الإصدار 1.0.0',
+                style: TextStyle(color: AppColors.textSecondary),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'تطبيق سهل وبسيط لإدارة أموالك الشخصية',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 14),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'صُمم بكل حب ❤️',
+                style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text(
+                    'إغلاق',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ),
               ),
             ],
           ),
-        ],
+        ),
       ),
-    );
-  }
-
-  Widget _buildStatItem(String title, String value, IconData icon) {
-    return Column(
-      children: [
-        Icon(icon, color: Colors.white70, size: 20),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        Text(
-          title,
-          style: const TextStyle(
-            color: Colors.white70,
-            fontSize: 12,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSection({
-    required String title,
-    required List<Widget> children,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Text(
-            title,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textSecondary,
-            ),
-          ),
-        ),
-        Card(
-          margin: const EdgeInsets.only(bottom: 16),
-          child: Column(children: children),
-        ),
-      ],
     );
   }
 
   void _showBackupDialog(BuildContext context) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('النسخ الاحتياطي'),
-        content: const Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: Icon(Icons.cloud_upload, color: AppColors.primary),
-              title: Text('نسخ احتياطي الآن'),
-              subtitle: Text('حفظ البيانات في السحابة'),
-            ),
-            ListTile(
-              leading: Icon(Icons.restore, color: AppColors.success),
-              title: Text('استعادة من نسخة'),
-              subtitle: Text('استرجاع البيانات المحفوظة'),
-            ),
-            ListTile(
-              leading: Icon(Icons.schedule, color: AppColors.warning),
-              title: Text('نسخ تلقائي'),
-              subtitle: Text('كل يوم في الساعة 2:00 صباحاً'),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('إغلاق'),
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'النسخ الاحتياطي',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 20),
+              _buildDialogOption(
+                icon: Icons.cloud_upload_rounded,
+                title: 'نسخ احتياطي الآن',
+                subtitle: 'حفظ البيانات في السحابة',
+                color: AppColors.primary,
+                onTap: () {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('جاري إنشاء نسخة احتياطية...'),
+                      backgroundColor: AppColors.success,
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 12),
+              _buildDialogOption(
+                icon: Icons.restore_rounded,
+                title: 'استعادة من نسخة',
+                subtitle: 'استرجاع البيانات المحفوظة',
+                color: AppColors.success,
+                onTap: () {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('جاري استعادة البيانات...'),
+                      backgroundColor: AppColors.success,
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 12),
+              _buildDialogOption(
+                icon: Icons.schedule_rounded,
+                title: 'نسخ تلقائي',
+                subtitle: 'كل يوم في الساعة 2:00 صباحاً',
+                color: AppColors.warning,
+                onTap: () {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('تم تفعيل النسخ التلقائي'),
+                      backgroundColor: AppColors.success,
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text('إغلاق'),
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDialogOption({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, color: color, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -625,47 +1082,69 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void _showExportDialog(BuildContext context) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('تصدير البيانات'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.table_chart, color: Colors.green),
-              title: const Text('Excel'),
-              subtitle: const Text('تصدير كملف Excel'),
-              onTap: () {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('جاري تصدير البيانات...'),
-                    backgroundColor: AppColors.success,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'تصدير البيانات',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 20),
+              _buildDialogOption(
+                icon: Icons.table_chart_rounded,
+                title: 'Excel',
+                subtitle: 'تصدير كملف Excel',
+                color: Colors.green,
+                onTap: () {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('جاري تصدير البيانات...'),
+                      backgroundColor: AppColors.success,
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 12),
+              _buildDialogOption(
+                icon: Icons.picture_as_pdf_rounded,
+                title: 'PDF',
+                subtitle: 'تصدير كملف PDF',
+                color: Colors.red,
+                onTap: () {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('جاري تصدير البيانات...'),
+                      backgroundColor: AppColors.success,
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.picture_as_pdf, color: Colors.red),
-              title: const Text('PDF'),
-              subtitle: const Text('تصدير كملف PDF'),
-              onTap: () {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('جاري تصدير البيانات...'),
-                    backgroundColor: AppColors.success,
-                  ),
-                );
-              },
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('إلغاء'),
+                  child: const Text('إغلاق'),
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -673,33 +1152,80 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void _showDeleteDataDialog(BuildContext context) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('تحذير!'),
-        content: const Text(
-          'هل أنت متأكد من حذف جميع البيانات؟\nلا يمكن التراجع عن هذا الإجراء.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('إلغاء'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              // يمكن إضافة حذف البيانات هنا
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('تم حذف جميع البيانات'),
-                  backgroundColor: AppColors.error,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.warning_rounded,
+                size: 48,
+                color: AppColors.error,
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'تحذير!',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
                 ),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.error,
-            ),
-            child: const Text('حذف الكل'),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'هل أنت متأكد من حذف جميع البيانات؟\nلا يمكن التراجع عن هذا الإجراء.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text('إلغاء'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('تم حذف جميع البيانات'),
+                            backgroundColor: AppColors.error,
+                          ),
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.error,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'حذف الكل',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-        ],
+        ),
       ),
-      );
+    );
   }
+}

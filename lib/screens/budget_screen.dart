@@ -19,12 +19,34 @@ class _BudgetScreenState extends State<BudgetScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('الميزانيات'),
+        title: const Text(
+          'الميزانيات',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
+          ),
+        ),
         centerTitle: true,
+        backgroundColor: Colors.white,
+        elevation: 0,
         actions: [
           IconButton(
-            icon: const Icon(Icons.add),
+            icon: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: AppColors.primary,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(
+                Icons.add,
+                color: Colors.white,
+                size: 20,
+              ),
+            ),
             onPressed: () => _showAddBudgetDialog(context),
           ),
         ],
@@ -37,206 +59,268 @@ class _BudgetScreenState extends State<BudgetScreen> {
           
           if (allCategories.isEmpty) {
             return EmptyState(
-              icon: Icons.account_balance_wallet,
+              icon: Icons.account_balance_wallet_rounded,
               title: 'لا توجد فئات',
               subtitle: 'أضف فئات أولاً من شاشة إضافة العمليات',
             );
           }
 
-          return ListView.builder(
+          return Padding(
             padding: const EdgeInsets.all(16),
-            itemCount: allCategories.length,
-            itemBuilder: (context, index) {
-              final category = allCategories[index];
-              final budget = provider.getBudgetForCategory(category.name);
-              final summary = provider.monthlySummary;
-              final spent = summary?.expensesByCategory[category.name] ?? 0;
-              final progress = budget != null && budget.amount > 0
-                  ? (spent / budget.amount).clamp(0.0, 1.5)
-                  : 0.0;
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // عنوان الصفحة
+                const Text(
+                  'إدارة الميزانيات الشهرية',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.black54,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'تابع مصروفاتك والتزم بميزانيتك',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey[600],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                
+                // قائمة الميزانيات
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: allCategories.length,
+                    itemBuilder: (context, index) {
+                      final category = allCategories[index];
+                      final budget = provider.getBudgetForCategory(category.name);
+                      final summary = provider.monthlySummary;
+                      final spent = summary?.expensesByCategory[category.name] ?? 0;
+                      final progress = budget != null && budget.amount > 0
+                          ? (spent / budget.amount).clamp(0.0, 1.5)
+                          : 0.0;
 
-              return Card(
-                margin: const EdgeInsets.only(bottom: 16),
-                child: InkWell(
-                  onTap: budget != null
-                      ? () => _showEditBudgetDialog(context, category.name, budget)
-                      : () => _showAddBudgetDialog(context, category.name),
-                  borderRadius: BorderRadius.circular(12),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              width: 48,
-                              height: 48,
-                              decoration: BoxDecoration(
-                                color: _getCategoryColor(category.type).withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Icon(
-                                _getCategoryIcon(category.type),
-                                color: _getCategoryColor(category.type),
-                              ),
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
                             ),
-                            const SizedBox(width: 12),
-                            Expanded(
+                          ],
+                        ),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: budget != null
+                                ? () => _showEditBudgetDialog(context, category.name, budget)
+                                : () => _showAddBudgetDialog(context, category.name),
+                            borderRadius: BorderRadius.circular(20),
+                            child: Padding(
+                              padding: const EdgeInsets.all(20),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(
-                                    category.name,
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  Text(
-                                    category.type == 'expense' ? 'مصروف' : 'التزام',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: AppColors.textSecondary,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            if (budget != null) ...[
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  Text(
-                                    AppConstants.formatMoney(budget.amount),
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  Text(
-                                    'الميزانية',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: AppColors.textSecondary,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ] else ...[
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 6,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppColors.primary.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: const Text(
-                                  'تحديد ميزانية',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: AppColors.primary,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                        if (budget != null) ...[
-                          const SizedBox(height: 16),
-                          // شريط التقدم
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    'المصروف: ${AppConstants.formatMoney(spent)}',
-                                    style: const TextStyle(fontSize: 12),
-                                  ),
-                                  Text(
-                                    '${(progress * 100).toStringAsFixed(0)}%',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                      color: _getProgressColor(progress),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 8),
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(4),
-                                child: LinearProgressIndicator(
-                                  value: progress > 1 ? 1 : progress,
-                                  backgroundColor: Colors.grey[200],
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                    _getProgressColor(progress),
-                                  ),
-                                  minHeight: 8,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'المتبقي: ${AppConstants.formatMoney((budget.amount - spent).clamp(0, double.infinity))}',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: AppColors.textSecondary,
-                                ),
-                              ),
-                            ],
-                          ),
-                          // التحذيرات
-                          if (progress > 0.8) ...[
-                            const SizedBox(height: 12),
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: progress > 1
-                                    ? AppColors.error.withOpacity(0.1)
-                                    : AppColors.warning.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    progress > 1
-                                        ? Icons.error_outline
-                                        : Icons.warning_amber_rounded,
-                                    size: 16,
-                                    color: progress > 1
-                                        ? AppColors.error
-                                        : AppColors.warning,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      progress > 1
-                                          ? 'تجاوزت الميزانية بمبلغ ${AppConstants.formatMoney(spent - budget.amount)}'
-                                          : 'اقتربت من حد الميزانية',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: progress > 1
-                                            ? AppColors.error
-                                            : AppColors.warning,
+                                  Row(
+                                    children: [
+                                      // أيقونة الفئة
+                                      Container(
+                                        width: 48,
+                                        height: 48,
+                                        decoration: BoxDecoration(
+                                          color: _getCategoryColor(category.type).withOpacity(0.1),
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                        child: Icon(
+                                          _getCategoryIcon(category.type),
+                                          color: _getCategoryColor(category.type),
+                                          size: 24,
+                                        ),
                                       ),
-                                    ),
+                                      const SizedBox(width: 16),
+                                      
+                                      // معلومات الفئة
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              category.name,
+                                              style: const TextStyle(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.black87,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              category.type == 'expense' ? 'مصروف' : 'التزام',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: Colors.grey[600],
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      
+                                      // الميزانية
+                                      if (budget != null) ...[
+                                        Column(
+                                          crossAxisAlignment: CrossAxisAlignment.end,
+                                          children: [
+                                            Text(
+                                              AppConstants.formatMoney(budget.amount),
+                                              style: const TextStyle(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.black87,
+                                              ),
+                                            ),
+                                            Text(
+                                              'الميزانية',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: Colors.grey[600],
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ] else ...[
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 16,
+                                            vertical: 8,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: AppColors.primary.withOpacity(0.1),
+                                            borderRadius: BorderRadius.circular(20),
+                                          ),
+                                          child: const Text(
+                                            'تحديد ميزانية',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: AppColors.primary,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ],
                                   ),
+                                  
+                                  if (budget != null) ...[
+                                    const SizedBox(height: 20),
+                                    
+                                    // شريط التقدم
+                                    Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            Text(
+                                              'المصروف: ${AppConstants.formatMoney(spent)}',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: Colors.grey[600],
+                                              ),
+                                            ),
+                                            Text(
+                                              '${(progress * 100).toStringAsFixed(0)}%',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.bold,
+                                                color: _getProgressColor(progress),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 8),
+                                        
+                                        // شريط التقدم
+                                        ClipRRect(
+                                          borderRadius: BorderRadius.circular(8),
+                                          child: LinearProgressIndicator(
+                                            value: progress > 1 ? 1 : progress,
+                                            backgroundColor: Colors.grey[200],
+                                            valueColor: AlwaysStoppedAnimation<Color>(
+                                              _getProgressColor(progress),
+                                            ),
+                                            minHeight: 10,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        
+                                        // المتبقي
+                                        Text(
+                                          'المتبقي: ${AppConstants.formatMoney((budget.amount - spent).clamp(0, double.infinity))}',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.grey[600],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    
+                                    // التحذيرات
+                                    if (progress > 0.8) ...[
+                                      const SizedBox(height: 16),
+                                      Container(
+                                        padding: const EdgeInsets.all(12),
+                                        decoration: BoxDecoration(
+                                          color: progress > 1
+                                              ? AppColors.error.withOpacity(0.1)
+                                              : AppColors.warning.withOpacity(0.1),
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            Icon(
+                                              progress > 1
+                                                  ? Icons.error_outline_rounded
+                                                  : Icons.warning_amber_rounded,
+                                              size: 20,
+                                              color: progress > 1
+                                                  ? AppColors.error
+                                                  : AppColors.warning,
+                                            ),
+                                            const SizedBox(width: 12),
+                                            Expanded(
+                                              child: Text(
+                                                progress > 1
+                                                    ? 'تجاوزت الميزانية بمبلغ ${AppConstants.formatMoney(spent - budget.amount)}'
+                                                    : 'اقتربت من حد الميزانية',
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w500,
+                                                  color: progress > 1
+                                                      ? AppColors.error
+                                                      : AppColors.warning,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ],
                                 ],
                               ),
                             ),
-                          ],
-                        ],
-                      ],
-                    ),
+                          ),
+                        ),
+                      );
+                    },
                   ),
                 ),
-              );
-            },
+              ],
+            ),
           );
         },
       ),
@@ -257,11 +341,11 @@ class _BudgetScreenState extends State<BudgetScreen> {
   IconData _getCategoryIcon(String type) {
     switch (type) {
       case 'expense':
-        return Icons.shopping_cart;
+        return Icons.shopping_cart_rounded;
       case 'commitment':
-        return Icons.event_repeat;
+        return Icons.event_repeat_rounded;
       default:
-        return Icons.category;
+        return Icons.category_rounded;
     }
   }
 
@@ -284,86 +368,143 @@ class _BudgetScreenState extends State<BudgetScreen> {
 
     await showDialog(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('تحديد ميزانية'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (categoryName == null) ...[
-              DropdownButtonFormField<String>(
-                value: selectedCategory,
+      builder: (dialogContext) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'تحديد ميزانية جديدة',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 20),
+              
+              if (categoryName == null) ...[
+                DropdownButtonFormField<String>(
+                  value: selectedCategory,
+                  decoration: InputDecoration(
+                    labelText: 'الفئة',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    filled: true,
+                    fillColor: Colors.grey[50],
+                  ),
+                  items: categories.map((cat) => DropdownMenuItem(
+                    value: cat.name,
+                    child: Text(cat.name),
+                  )).toList(),
+                  onChanged: (value) => selectedCategory = value,
+                ),
+                const SizedBox(height: 16),
+              ] else ...[
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[50],
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.category_rounded,
+                        color: AppColors.primary,
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        categoryName,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+              
+              TextField(
+                controller: amountController,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
+                ],
                 decoration: InputDecoration(
-                  labelText: 'الفئة',
+                  labelText: 'المبلغ الشهري',
+                  hintText: '0.00',
+                  suffixText: AppConstants.currencySymbol,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
-                ),
-                items: categories.map((cat) => DropdownMenuItem(
-                  value: cat.name,
-                  child: Text(cat.name),
-                )).toList(),
-                onChanged: (value) => selectedCategory = value,
-              ),
-              const SizedBox(height: 16),
-            ] else ...[
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: Icon(
-                  Icons.category,
-                  color: AppColors.primary,
-                ),
-                title: Text(categoryName),
-                subtitle: const Text('الفئة المحددة'),
-              ),
-              const SizedBox(height: 16),
-            ],
-            TextField(
-              controller: amountController,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
-              ],
-              decoration: InputDecoration(
-                labelText: 'المبلغ الشهري',
-                hintText: '0.00',
-                suffixText: AppConstants.currencySymbol,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  filled: true,
+                  fillColor: Colors.grey[50],
                 ),
               ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('إلغاء'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              final amount = double.tryParse(amountController.text);
-              if (amount != null && amount > 0 && selectedCategory != null) {
-                final budget = BudgetModel(
-                  category: selectedCategory!,
-                  amount: amount,
-                  startDate: DateTime.now(),
-                );
-                
-                await provider.saveBudget(budget);
-                if (dialogContext.mounted) {
-                  Navigator.pop(dialogContext);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('تم تحديد الميزانية بنجاح'),
-                      backgroundColor: AppColors.success,
+              const SizedBox(height: 24),
+              
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(dialogContext),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text('إلغاء'),
                     ),
-                  );
-                }
-              }
-            },
-            child: const Text('حفظ'),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        final amount = double.tryParse(amountController.text);
+                        if (amount != null && amount > 0 && selectedCategory != null) {
+                          final budget = BudgetModel(
+                            category: selectedCategory!,
+                            amount: amount,
+                            startDate: DateTime.now(),
+                          );
+                          
+                          await provider.saveBudget(budget);
+                          if (dialogContext.mounted) {
+                            Navigator.pop(dialogContext);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: const Text('تم تحديد الميزانية بنجاح'),
+                                backgroundColor: AppColors.success,
+                                behavior: SnackBarBehavior.floating,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                            );
+                          }
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'حفظ',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -380,95 +521,162 @@ class _BudgetScreenState extends State<BudgetScreen> {
 
     await showDialog(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('تعديل الميزانية'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: Icon(
-                Icons.category,
-                color: AppColors.primary,
-              ),
-              title: Text(categoryName),
-              subtitle: const Text('الفئة'),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: amountController,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
-              ],
-              decoration: InputDecoration(
-                labelText: 'المبلغ الشهري',
-                hintText: '0.00',
-                suffixText: AppConstants.currencySymbol,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+      builder: (dialogContext) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'تعديل الميزانية',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('إلغاء'),
-          ),
-          TextButton(
-            onPressed: () async {
-              // حذف الميزانية
-              final updatedBudget = BudgetModel(
-                id: budget.id,
-                category: categoryName,
-                amount: 0,
-                startDate: budget.startDate,
-              );
+              const SizedBox(height: 20),
               
-              await provider.saveBudget(updatedBudget);
-              if (dialogContext.mounted) {
-                Navigator.pop(dialogContext);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('تم حذف الميزانية'),
-                    backgroundColor: AppColors.warning,
-                  ),
-                );
-              }
-            },
-            child: const Text(
-              'حذف',
-              style: TextStyle(color: AppColors.error),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              final amount = double.tryParse(amountController.text);
-              if (amount != null && amount > 0) {
-                final updatedBudget = BudgetModel(
-                  id: budget.id,
-                  category: categoryName,
-                  amount: amount,
-                  startDate: budget.startDate,
-                );
-                
-                await provider.saveBudget(updatedBudget);
-                if (dialogContext.mounted) {
-                  Navigator.pop(dialogContext);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('تم تحديث الميزانية بنجاح'),
-                      backgroundColor: AppColors.success,
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.grey[50],
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.category_rounded,
+                      color: AppColors.primary,
                     ),
-                  );
-                }
-              }
-            },
-            child: const Text('حفظ'),
+                    const SizedBox(width: 12),
+                    Text(
+                      categoryName,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              
+              TextField(
+                controller: amountController,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
+                ],
+                decoration: InputDecoration(
+                  labelText: 'المبلغ الشهري',
+                  hintText: '0.00',
+                  suffixText: AppConstants.currencySymbol,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  filled: true,
+                  fillColor: Colors.grey[50],
+                ),
+              ),
+              const SizedBox(height: 24),
+              
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(dialogContext),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text('إلغاء'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () async {
+                        // حذف الميزانية
+                        final updatedBudget = BudgetModel(
+                          id: budget.id,
+                          category: categoryName,
+                          amount: 0,
+                          startDate: budget.startDate,
+                        );
+                        
+                        await provider.saveBudget(updatedBudget);
+                        if (dialogContext.mounted) {
+                          Navigator.pop(dialogContext);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: const Text('تم حذف الميزانية'),
+                              backgroundColor: AppColors.warning,
+                              behavior: SnackBarBehavior.floating,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                          );
+                        }
+                      },
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        side: const BorderSide(color: AppColors.error),
+                      ),
+                      child: const Text(
+                        'حذف',
+                        style: TextStyle(color: AppColors.error),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        final amount = double.tryParse(amountController.text);
+                        if (amount != null && amount > 0) {
+                          final updatedBudget = BudgetModel(
+                            id: budget.id,
+                            category: categoryName,
+                            amount: amount,
+                            startDate: budget.startDate,
+                          );
+                          
+                          await provider.saveBudget(updatedBudget);
+                          if (dialogContext.mounted) {
+                            Navigator.pop(dialogContext);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: const Text('تم تحديث الميزانية بنجاح'),
+                                backgroundColor: AppColors.success,
+                                behavior: SnackBarBehavior.floating,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                            );
+                          }
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'حفظ',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

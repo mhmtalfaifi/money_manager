@@ -36,82 +36,152 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
   @override
   Widget build(BuildContext context) {
     return SafeArea(
-      child: Consumer<TransactionProvider>(
-        builder: (context, provider, child) {
-          final summary = provider.monthlySummary;
-          
-          return Column(
-            children: [
-              // العنوان
-              Container(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  children: [
-                    const Text(
-                      'التقارير والإحصائيات',
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        body: Consumer<TransactionProvider>(
+          builder: (context, provider, child) {
+            final summary = provider.monthlySummary;
+            
+            return Column(
+              children: [
+                // العنوان واختيار الفترة
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: const BorderRadius.only(
+                      bottomLeft: Radius.circular(24),
+                      bottomRight: Radius.circular(24),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, 2),
                       ),
-                    ),
-                    const SizedBox(height: 16),
-                    // اختيار الفترة
-                    SegmentedButton<String>(
-                      segments: const [
-                        ButtonSegment(
-                          value: 'month',
-                          label: Text('شهري'),
-                          icon: Icon(Icons.calendar_view_month),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      const Text(
+                        'التقارير والإحصائيات',
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
                         ),
-                        ButtonSegment(
-                          value: 'year',
-                          label: Text('سنوي'),
-                          icon: Icon(Icons.calendar_today),
+                      ),
+                      const SizedBox(height: 16),
+                      // اختيار الفترة
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.grey[50],
+                          borderRadius: BorderRadius.circular(16),
                         ),
-                        ButtonSegment(
-                          value: 'custom',
-                          label: Text('مخصص'),
-                          icon: Icon(Icons.date_range),
+                        padding: const EdgeInsets.all(4),
+                        child: Row(
+                          children: [
+                            _buildPeriodButton('month', 'شهري', Icons.calendar_view_month_rounded),
+                            const SizedBox(width: 8),
+                            _buildPeriodButton('year', 'سنوي', Icons.calendar_today_rounded),
+                            const SizedBox(width: 8),
+                            _buildPeriodButton('custom', 'مخصص', Icons.date_range_rounded),
+                          ],
                         ),
-                      ],
-                      selected: {_selectedPeriod},
-                      onSelectionChanged: (value) {
-                        setState(() {
-                          _selectedPeriod = value.first;
-                        });
-                      },
-                    ),
-                  ],
+                      ),
+                    ],
+                  ),
                 ),
+                
+                // التابات
+                Container(
+                  color: Colors.white,
+                  child: TabBar(
+                    controller: _tabController,
+                    tabs: const [
+                      Tab(
+                        child: Text(
+                          'نظرة عامة',
+                          style: TextStyle(fontWeight: FontWeight.w500),
+                        ),
+                      ),
+                      Tab(
+                        child: Text(
+                          'الفئات',
+                          style: TextStyle(fontWeight: FontWeight.w500),
+                        ),
+                      ),
+                      Tab(
+                        child: Text(
+                          'المدن',
+                          style: TextStyle(fontWeight: FontWeight.w500),
+                        ),
+                      ),
+                    ],
+                    indicatorColor: AppColors.primary,
+                    labelColor: AppColors.primary,
+                    unselectedLabelColor: AppColors.textSecondary,
+                    indicatorSize: TabBarIndicatorSize.tab,
+                    indicatorWeight: 3,
+                    indicatorPadding: const EdgeInsets.symmetric(horizontal: 16),
+                  ),
+                ),
+                
+                // محتوى التابات
+                Expanded(
+                  child: TabBarView(
+                    controller: _tabController,
+                    children: [
+                      _buildOverviewTab(provider, summary),
+                      _buildCategoriesTab(provider, summary),
+                      _buildCitiesTab(provider, summary),
+                    ],
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPeriodButton(String period, String label, IconData icon) {
+    final isSelected = _selectedPeriod == period;
+    
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          setState(() {
+            _selectedPeriod = period;
+          });
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+          decoration: BoxDecoration(
+            color: isSelected ? AppColors.primary : Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: 16,
+                color: isSelected ? Colors.white : AppColors.primary,
               ),
-              
-              // التابات
-              TabBar(
-                controller: _tabController,
-                tabs: const [
-                  Tab(text: 'نظرة عامة'),
-                  Tab(text: 'الفئات'),
-                  Tab(text: 'المدن'),
-                ],
-                indicatorColor: AppColors.primary,
-                labelColor: AppColors.primary,
-                unselectedLabelColor: AppColors.textSecondary,
-              ),
-              
-              // محتوى التابات
-              Expanded(
-                child: TabBarView(
-                  controller: _tabController,
-                  children: [
-                    _buildOverviewTab(provider, summary),
-                    _buildCategoriesTab(provider, summary),
-                    _buildCitiesTab(provider, summary),
-                  ],
+              const SizedBox(width: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: isSelected ? Colors.white : AppColors.primary,
                 ),
               ),
             ],
-          );
-        },
+          ),
+        ),
       ),
     );
   }
@@ -119,11 +189,16 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
   // تاب النظرة العامة
   Widget _buildOverviewTab(TransactionProvider provider, MonthlySummary? summary) {
     if (summary == null) {
-      return const Center(child: Text('لا توجد بيانات'));
+      return const Center(
+        child: Text(
+          'لا توجد بيانات',
+          style: TextStyle(color: AppColors.textSecondary),
+        ),
+      );
     }
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -134,7 +209,7 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
                 child: StatCard(
                   title: 'معدل الادخار',
                   value: '${summary.savingsRate.toStringAsFixed(1)}%',
-                  icon: Icons.savings,
+                  icon: Icons.savings_rounded,
                   color: AppColors.success,
                   subtitle: 'من الدخل الشهري',
                 ),
@@ -144,14 +219,14 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
                 child: StatCard(
                   title: 'معدل الإنفاق',
                   value: '${summary.expenseRate.toStringAsFixed(1)}%',
-                  icon: Icons.trending_up,
+                  icon: Icons.trending_up_rounded,
                   color: AppColors.warning,
                   subtitle: 'من الدخل الشهري',
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
           
           // الرسم البياني الخطي
           const Text(
@@ -159,20 +234,21 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
+              color: Colors.black87,
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           Container(
             height: 250,
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(20),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withOpacity(0.05),
                   blurRadius: 10,
-                  offset: const Offset(0, 2),
+                  offset: const Offset(0, 4),
                 ),
               ],
             ),
@@ -186,25 +262,27 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
+              color: Colors.black87,
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           Container(
             height: 300,
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(20),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withOpacity(0.05),
                   blurRadius: 10,
-                  offset: const Offset(0, 2),
+                  offset: const Offset(0, 4),
                 ),
               ],
             ),
             child: _buildPieChart(summary),
           ),
+          const SizedBox(height: 20),
         ],
       ),
     );
@@ -213,25 +291,50 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
   // تاب الفئات
   Widget _buildCategoriesTab(TransactionProvider provider, MonthlySummary? summary) {
     if (summary == null || summary.expensesByCategory.isEmpty) {
-      return const Center(child: Text('لا توجد بيانات'));
+      return const Center(
+        child: Text(
+          'لا توجد بيانات',
+          style: TextStyle(color: AppColors.textSecondary),
+        ),
+      );
     }
 
     final sortedCategories = summary.expensesByCategory.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: sortedCategories.length + 1,
-      itemBuilder: (context, index) {
-        if (index == 0) {
-          // الرسم البياني الأفقي
+    return ListView(
+      padding: const EdgeInsets.all(20),
+      children: [
+        // الرسم البياني الأفقي
+        Container(
+          height: 400,
+          margin: const EdgeInsets.only(bottom: 20),
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: _buildBarChart(summary),
+        ),
+        
+        // قائمة الفئات
+        ...sortedCategories.map((category) {
+          final budget = provider.getBudgetForCategory(category.key);
+          final progress = provider.getCategoryBudgetProgress(category.key);
+          final percentage = (category.value / summary.totalExpenses) * 100;
+
           return Container(
-            height: 400,
-            margin: const EdgeInsets.only(bottom: 24),
-            padding: const EdgeInsets.all(16),
+            margin: const EdgeInsets.only(bottom: 12),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withOpacity(0.05),
@@ -240,86 +343,116 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
                 ),
               ],
             ),
-            child: _buildBarChart(summary),
-          );
-        }
-
-        final category = sortedCategories[index - 1];
-        final budget = provider.getBudgetForCategory(category.key);
-        final progress = provider.getCategoryBudgetProgress(category.key);
-
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          child: ListTile(
-            leading: Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: AppColors.expense.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
+            child: ListTile(
+              contentPadding: const EdgeInsets.all(16),
+              leading: Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: AppColors.expense.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  Icons.category_rounded,
+                  color: AppColors.expense,
+                  size: 24,
+                ),
               ),
-              child: Icon(
-                Icons.category,
-                color: AppColors.expense,
+              title: Text(
+                category.key,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
               ),
-            ),
-            title: Text(
-              category.key,
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(formatMoney(category.value)),
-                if (budget != null) ...[
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   const SizedBox(height: 4),
-                  LinearProgressIndicator(
-                    value: progress,
-                    backgroundColor: Colors.grey[200],
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      progress > 0.8 ? AppColors.error : AppColors.success,
+                  Text(
+                    AppConstants.formatMoney(category.value),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'من ${formatMoney(budget.amount)}',
-                    style: const TextStyle(fontSize: 12),
-                  ),
+                  if (budget != null) ...[
+                    const SizedBox(height: 8),
+                    LinearProgressIndicator(
+                      value: progress,
+                      backgroundColor: Colors.grey[200],
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        progress > 0.8 ? AppColors.error : AppColors.success,
+                      ),
+                      borderRadius: BorderRadius.circular(4),
+                      minHeight: 6,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'من ${AppConstants.formatMoney(budget.amount)}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ],
                 ],
-              ],
-            ),
-            trailing: Text(
-              '${((category.value / summary.totalExpenses) * 100).toStringAsFixed(1)}%',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: AppColors.expense,
+              ),
+              trailing: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.expense.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Text(
+                  '${percentage.toStringAsFixed(1)}%',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.expense,
+                    fontSize: 12,
+                  ),
+                ),
               ),
             ),
-          ),
-        );
-      },
+          );
+        }).toList(),
+      ],
     );
   }
 
   // تاب المدن
   Widget _buildCitiesTab(TransactionProvider provider, MonthlySummary? summary) {
     if (summary == null || summary.expensesByCity.isEmpty) {
-      return const Center(child: Text('لا توجد بيانات'));
+      return const Center(
+        child: Text(
+          'لا توجد بيانات',
+          style: TextStyle(color: AppColors.textSecondary),
+        ),
+      );
     }
 
     final sortedCities = summary.expensesByCity.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: sortedCities.length,
-      itemBuilder: (context, index) {
-        final city = sortedCities[index];
+    return ListView(
+      padding: const EdgeInsets.all(20),
+      children: sortedCities.map((city) {
         final percentage = (city.value / summary.totalExpenses) * 100;
 
-        return Card(
+        return Container(
           margin: const EdgeInsets.only(bottom: 12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
           child: ListTile(
+            contentPadding: const EdgeInsets.all(16),
             leading: Container(
               width: 48,
               height: 48,
@@ -328,23 +461,35 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(
-                Icons.location_city,
+                Icons.location_city_rounded,
                 color: AppColors.primary,
+                size: 24,
               ),
             ),
             title: Text(
               city.key,
-              style: const TextStyle(fontWeight: FontWeight.bold),
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
             ),
             subtitle: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(formatMoney(city.value)),
                 const SizedBox(height: 4),
+                Text(
+                  AppConstants.formatMoney(city.value),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 8),
                 LinearProgressIndicator(
                   value: percentage / 100,
                   backgroundColor: Colors.grey[200],
                   valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+                  borderRadius: BorderRadius.circular(4),
+                  minHeight: 6,
                 ),
               ],
             ),
@@ -352,39 +497,82 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
                 color: AppColors.primary.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(16),
               ),
               child: Text(
                 '${percentage.toStringAsFixed(1)}%',
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   color: AppColors.primary,
+                  fontSize: 12,
                 ),
               ),
             ),
           ),
         );
-      },
+      }).toList(),
     );
-  }
-
-  // Helper function to format money
-  String formatMoney(double amount) {
-    return '${amount.toStringAsFixed(2)} ر.س';
   }
 
   // الرسم البياني الخطي
   Widget _buildLineChart(TransactionProvider provider) {
-  return Center(
-    child: Text(
-      'الرسم البياني الخطي (سيتم تفعيله لاحقاً)',
-      style: TextStyle(color: AppColors.textSecondary),
-    ),
-  );
-}
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.bar_chart_rounded,
+            size: 48,
+            color: AppColors.primary.withOpacity(0.3),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'الرسم البياني الخطي',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'سيتم تفعيله في التحديثات القادمة',
+            style: TextStyle(
+              fontSize: 12,
+              color: AppColors.textSecondary,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
   // الرسم البياني الدائري
   Widget _buildPieChart(MonthlySummary summary) {
     final data = summary.expensesByCategory.entries.toList();
+    if (data.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.pie_chart_rounded,
+              size: 48,
+              color: AppColors.primary.withOpacity(0.3),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'لا توجد بيانات للعرض',
+              style: TextStyle(
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     final colors = [
       AppColors.income,
       AppColors.expense,
@@ -397,7 +585,7 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
     return PieChart(
       PieChartData(
         sectionsSpace: 2,
-        centerSpaceRadius: 40,
+        centerSpaceRadius: 60,
         sections: data.asMap().entries.map((entry) {
           final index = entry.key;
           final category = entry.value;
@@ -407,7 +595,7 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
             color: colors[index % colors.length],
             value: category.value,
             title: percentage > 5 ? '${percentage.toStringAsFixed(0)}%' : '',
-            radius: 100,
+            radius: 80,
             titleStyle: const TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.bold,
@@ -420,14 +608,36 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
   }
 
   // الرسم البياني الأفقي
- Widget _buildBarChart(MonthlySummary summary) {
-  return Center(
-    child: Text(
-      'الرسم البياني الأفقي (سيتم تفعيله لاحقاً)',
-      style: TextStyle(color: AppColors.textSecondary),
-    ),
-  );
-}
-
-
+  Widget _buildBarChart(MonthlySummary summary) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.analytics_rounded,
+            size: 48,
+            color: AppColors.primary.withOpacity(0.3),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'الرسم البياني الأفقي',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'سيتم تفعيله في التحديثات القادمة',
+            style: TextStyle(
+              fontSize: 12,
+              color: AppColors.textSecondary,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
 }
