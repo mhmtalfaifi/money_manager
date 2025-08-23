@@ -6,7 +6,6 @@ import 'screens/home_screen.dart';
 import 'utils/app_colors.dart';
 import 'helpers/database_helper.dart';
 import 'providers/transaction_provider.dart';
-import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
 
 void main() async {
@@ -19,22 +18,7 @@ void main() async {
         defaultTargetPlatform == TargetPlatform.android) {
       // تهيئة قاعدة البيانات للموبايل
       await DatabaseHelper.instance.database;
-    } 
-    // للديسكتوب (Windows, macOS, Linux)
-    else {
-      try {
-        // استخدم sqflite_common_ffi للديسكتوب فقط
-        final sqfliteFfiInit = await _initDesktopDatabase();
-        if (sqfliteFfiInit != null) {
-          await DatabaseHelper.instance.database;
-        }
-      } catch (e) {
-        print("Desktop database initialization failed: $e");
-      }
     }
-  } else {
-    // على Web: يمكن ترك قاعدة البيانات فارغة
-    print("تشغيل على الويب: قاعدة البيانات غير متوفرة");
   }
 
   // إجبار الوضع العمودي فقط
@@ -43,24 +27,17 @@ void main() async {
     DeviceOrientation.portraitDown,
   ]);
 
-  runApp(const MyApp());
-}
+  // شفافية شريط الحالة
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.light,
+      systemNavigationBarColor: Colors.white,
+      systemNavigationBarIconBrightness: Brightness.dark,
+    ),
+  );
 
-// دالة منفصلة لتهيئة قاعدة البيانات للديسكتوب
-Future<bool?> _initDesktopDatabase() async {
-  try {
-    // تحميل ديناميكي للمكتبة فقط عند الحاجة
-    if (defaultTargetPlatform == TargetPlatform.windows ||
-        defaultTargetPlatform == TargetPlatform.linux ||
-        defaultTargetPlatform == TargetPlatform.macOS) {
-      // هنا يمكن إضافة كود خاص بالديسكتوب إذا لزم
-      return null; // نرجع null لأننا لن ندعم الديسكتوب حالياً
-    }
-    return null;
-  } catch (e) {
-    print("Desktop database error: $e");
-    return null;
-  }
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -94,7 +71,7 @@ class MyApp extends StatelessWidget {
             brightness: Brightness.light,
           ),
           useMaterial3: true,
-          fontFamily: 'Cairo',
+          fontFamily: 'Tajawal',
           
           // تخصيص الألوان
           primaryColor: AppColors.primary,
@@ -107,7 +84,7 @@ class MyApp extends StatelessWidget {
             backgroundColor: AppColors.background,
             foregroundColor: AppColors.textPrimary,
             titleTextStyle: TextStyle(
-              fontFamily: 'Cairo',
+              fontFamily: 'Tajawal',
               fontSize: 20,
               fontWeight: FontWeight.bold,
               color: AppColors.textPrimary,
@@ -116,9 +93,10 @@ class MyApp extends StatelessWidget {
           
           // تخصيص البطاقات
           cardTheme: CardThemeData(
-            elevation: 2,
+            elevation: 0,
+            color: Colors.white,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(16),
             ),
             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           ),
@@ -128,9 +106,16 @@ class MyApp extends StatelessWidget {
             style: ElevatedButton.styleFrom(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(12),
               ),
+              elevation: 0,
             ),
+          ),
+          
+          // تخصيص الـ FloatingActionButton
+          floatingActionButtonTheme: const FloatingActionButtonThemeData(
+            elevation: 4,
+            backgroundColor: AppColors.addButton,
           ),
         ),
         
@@ -141,7 +126,7 @@ class MyApp extends StatelessWidget {
             brightness: Brightness.dark,
           ),
           useMaterial3: true,
-          fontFamily: 'Cairo',
+          fontFamily: 'Tajawal',
           scaffoldBackgroundColor: const Color(0xFF121212),
           
           appBarTheme: const AppBarTheme(
@@ -149,22 +134,22 @@ class MyApp extends StatelessWidget {
             elevation: 0,
             backgroundColor: Color(0xFF121212),
             titleTextStyle: TextStyle(
-              fontFamily: 'Cairo',
+              fontFamily: 'Tajawal',
               fontSize: 20,
               fontWeight: FontWeight.bold,
             ),
           ),
           
           cardTheme: CardThemeData( 
-            elevation: 2,
+            elevation: 0,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(16),
             ),
             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           ),
         ),
         
-        themeMode: ThemeMode.system, // تتبع إعدادات النظام
+        themeMode: ThemeMode.light, // إجبار الوضع الفاتح
         
         home: const HomeScreen(),
       ),

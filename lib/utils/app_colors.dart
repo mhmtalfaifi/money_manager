@@ -1,31 +1,43 @@
+// utils/app_colors.dart
+
 import 'package:flutter/material.dart';
 
 class AppColors {
-  // الألوان الأساسية - محدثة حسب الصورة
-  static const Color primary = Color(0xFF4CAF50); // أخضر فاتح
-  static const Color income = Color(0xFF81C784); // أخضر فاتح للدخل
-  static const Color commitment = Color(0xFFFFB74D); // برتقالي فاتح للالتزامات
-  static const Color expense = Color(0xFF90CAF9); // أزرق فاتح للمصروفات
+  // الألوان الأساسية - حسب التصميم الجديد
+  static const Color primary = Color(0xFF5B8DEE); // أزرق عصري
+  static const Color income = Color(0xFF9FE2BF); // أخضر باستيل للدخل
+  static const Color commitment = Color(0xFFFFD4A3); // برتقالي باستيل للالتزامات  
+  static const Color expense = Color(0xFFB8D4F1); // أزرق فاتح للمصروفات
+  static const Color dailyExpense = Color(0xFFB8D4F1); // للمصروفات اليومية
   
   // ألوان الخلفية
-  static const Color background = Color(0xFFFAFAFA); // خلفية فاتحة جداً
+  static const Color background = Color(0xFFF8F9FA); // خلفية فاتحة
   static const Color cardBackground = Colors.white;
+  static const Color darkBackground = Color(0xFF1A1A1A); // للشاشة الرئيسية
   
   // ألوان النصوص
-  static const Color textPrimary = Color(0xFF212121);
-  static const Color textSecondary = Color(0xFF757575);
-  static const Color textLight = Color(0xFF9E9E9E);
+  static const Color textPrimary = Color(0xFF2D3436);
+  static const Color textSecondary = Color(0xFF636E72);
+  static const Color textLight = Color(0xFFB2BEC3);
+  static const Color textOnDark = Colors.white;
   
   // ألوان إضافية
-  static const Color error = Color(0xFFE57373);
-  static const Color success = Color(0xFF66BB6A);
-  static const Color warning = Color(0xFFFFB74D);
-  static const Color info = Color(0xFF42A5F5);
+  static const Color error = Color(0xFFFF6B6B);
+  static const Color success = Color(0xFF6BCF7F);
+  static const Color warning = Color(0xFFFFD93D);
+  static const Color info = Color(0xFF4ECDC4);
   
-  // باقي الكود يبقى كما هو...
-  static Color incomeLight = income.withOpacity(0.1);
-  static Color commitmentLight = commitment.withOpacity(0.1);
-  static Color expenseLight = expense.withOpacity(0.1);
+  // ألوان الدائرة للرصيد المتبقي
+  static const Color progressGreen = Color(0xFF6BCF7F);
+  static const Color progressGray = Color(0xFFE8E8E8);
+  
+  // زر الإضافة
+  static const Color addButton = Color(0xFF6BCF7F);
+  
+  // ألوان فاتحة للخلفيات
+  static Color incomeLight = income.withOpacity(0.15);
+  static Color commitmentLight = commitment.withOpacity(0.15);
+  static Color expenseLight = expense.withOpacity(0.15);
   
   static Color getTransactionColor(String type) {
     switch (type) {
@@ -82,12 +94,14 @@ class AppConstants {
   static const double fontSizeLarge = 16.0;
   static const double fontSizeXLarge = 20.0;
   static const double fontSizeXXLarge = 24.0;
+  static const double fontSizeHuge = 36.0;
   
   // زوايا الحواف
-  static const double borderRadiusSmall = 4.0;
-  static const double borderRadiusMedium = 8.0;
-  static const double borderRadiusLarge = 12.0;
-  static const double borderRadiusXLarge = 16.0;
+  static const double borderRadiusSmall = 8.0;
+  static const double borderRadiusMedium = 12.0;
+  static const double borderRadiusLarge = 16.0;
+  static const double borderRadiusXLarge = 20.0;
+  static const double borderRadiusRound = 24.0;
   
   // العملة
   static const String currency = 'ريال';
@@ -95,7 +109,30 @@ class AppConstants {
   
   // تنسيق الأرقام
   static String formatMoney(double amount) {
-    return '${amount.toStringAsFixed(2)} $currencySymbol';
+    // تنسيق الرقم بدون فاصلة عشرية إذا كان رقم صحيح
+    if (amount == amount.roundToDouble()) {
+      return '${amount.toInt().toString().replaceAllMapped(
+        RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+        (Match m) => '${m[1]},',
+      )} $currency';
+    }
+    return '${amount.toStringAsFixed(2).replaceAllMapped(
+      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+      (Match m) => '${m[1]},',
+    )} $currency';
+  }
+  
+  static String formatNumber(double amount) {
+    if (amount == amount.roundToDouble()) {
+      return amount.toInt().toString().replaceAllMapped(
+        RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+        (Match m) => '${m[1]},',
+      );
+    }
+    return amount.toStringAsFixed(2).replaceAllMapped(
+      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+      (Match m) => '${m[1]},',
+    );
   }
   
   // الفئات الافتراضية
@@ -108,13 +145,13 @@ class AppConstants {
   ];
   
   static const List<String> defaultExpenseCategories = [
-    'طعام ومشروبات',
-    'تسوق',
+    'بقالة',
+    'مطاعم',
     'مواصلات',
     'فواتير',
     'صحة',
     'ترفيه',
-    'تعليم',
+    'تسوق',
     'أخرى',
   ];
   
@@ -124,6 +161,7 @@ class AppConstants {
     'قسط قرض',
     'اشتراكات',
     'تأمين',
+    'فاتورة كهرباء',
     'أخرى',
   ];
   

@@ -12,7 +12,7 @@ dependencies:
   flutter_localizations:
     sdk: flutter
     
-  # قاعدة البيانات - فقط sqflite العادي
+  # قاعدة البيانات
   sqflite: ^2.3.0
   path: ^1.8.3
   
@@ -20,8 +20,7 @@ dependencies:
   provider: ^6.1.1
   
   # التنسيق والواجهات
-
-  intl: ^0.20.2
+  intl: 0.20.2
   flutter_svg: ^2.0.9
   
   # الرسوم البيانية
@@ -36,12 +35,14 @@ dependencies:
   
   # التصدير والمشاركة
   pdf: ^3.10.7
-  # excel: ^4.0.2  # احذف هذا مؤقتاً - قد يسبب مشاكل
   share_plus: ^7.2.1
   path_provider: ^2.1.1
   
   # الأيقونات
   cupertino_icons: ^1.0.6
+  
+  # Google Fonts للخطوط
+  google_fonts: ^6.1.0
 
 dev_dependencies:
   flutter_test:
@@ -51,10 +52,4 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   
-  # إضافة الخطوط إذا كنت تستخدمها
-  # fonts:
-  #   - family: Cairo
-  #     fonts:
-  #       - asset: fonts/Cairo-Regular.ttf
-  #       - asset: fonts/Cairo-Bold.ttf
-  #         weight: 700
+  # إضافة الخطوط
