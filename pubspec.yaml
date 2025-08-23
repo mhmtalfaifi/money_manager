@@ -1,0 +1,54 @@
+name: money_manager
+description: تطبيق إدارة الأموال الشخصية
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  fl_chart: ^0.66.2
+  sqflite_common_ffi: 2.3.6
+  sqflite_common_ffi_web: 1.0.1+1
+
+    
+  # قاعدة البيانات
+  sqflite: ^2.3.0
+  path: ^1.8.3
+  
+  # إدارة الحالة
+  provider: ^6.1.1
+  
+  # التنسيق والواجهات
+  intl: 0.20.2
+  flutter_svg: ^2.0.9
+  
+  # الرسوم البيانية
+  
+  # التقويم
+  table_calendar: ^3.0.9
+  
+  # الإشعارات
+  flutter_local_notifications: ^19.4.0
+  timezone: ^0.10.1
+  
+  # التصدير والمشاركة
+  pdf: ^3.10.7
+  excel: ^4.0.2
+  share_plus: ^11.1.0
+  path_provider: ^2.1.1
+  
+  # الأيقونات
+  cupertino_icons: ^1.0.6
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
