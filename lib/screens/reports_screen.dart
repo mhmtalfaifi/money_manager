@@ -9,6 +9,7 @@ import '../models/transaction_model.dart';
 import '../utils/app_colors.dart';
 import '../widgets/stat_card.dart';
 import '../utils/app_constants.dart';
+import '../models/transaction_model.dart' as models; // أضف alias
 
 
 class ReportsScreen extends StatefulWidget {
@@ -189,7 +190,7 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
   }
 
   // تاب النظرة العامة
-  Widget _buildOverviewTab(TransactionProvider provider, MonthlySummary? summary) {
+  Widget _buildOverviewTab(TransactionProvider provider, models.MonthlySummary? summary) {
     if (summary == null) {
       return const Center(
         child: Text(
@@ -291,7 +292,7 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
   }
 
   // تاب الفئات
-  Widget _buildCategoriesTab(TransactionProvider provider, MonthlySummary? summary) {
+  Widget _buildCategoriesTab(TransactionProvider provider, models.MonthlySummary? summary) {
     if (summary == null || summary.expensesByCategory.isEmpty) {
       return const Center(
         child: Text(
@@ -422,7 +423,7 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
   }
 
   // تاب المدن
-  Widget _buildCitiesTab(TransactionProvider provider, MonthlySummary? summary) {
+  Widget _buildCitiesTab(TransactionProvider provider, models.MonthlySummary? summary) {
     if (summary == null || summary.expensesByCity.isEmpty) {
       return const Center(
         child: Text(
@@ -551,7 +552,7 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
   }
 
   // الرسم البياني الدائري
-  Widget _buildPieChart(MonthlySummary summary) {
+  Widget _buildPieChart(models.MonthlySummary summary) {
   if (summary.expensesByCategory.isEmpty) {
     return Center(child: Text('لا توجد بيانات'));
   }
@@ -591,7 +592,7 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
   }
 
   // الرسم البياني الأفقي
-Widget _buildBarChart(MonthlySummary summary) {
+Widget _buildBarChart(models.MonthlySummary summary) {
     final data = summary.expensesByCategory.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
     

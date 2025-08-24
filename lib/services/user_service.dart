@@ -1,5 +1,3 @@
-// services/user_service.dart
-
 import 'package:shared_preferences/shared_preferences.dart';
 
 class UserService {
@@ -11,8 +9,8 @@ class UserService {
   static const String _userNameKey = 'user_name';
   static const String _firstTimeUserKey = 'first_time_user';
   
-  // القيم الافتراضية
-  static const String _defaultName = 'أحمد';
+  // إزالة القيمة الافتراضية
+  String? _cachedUserName;
 
   /// التحقق من كون المستخدم جديد
   Future<bool> isFirstTimeUser() async {
@@ -20,7 +18,7 @@ class UserService {
       final prefs = await SharedPreferences.getInstance();
       return prefs.getBool(_firstTimeUserKey) ?? true;
     } catch (e) {
-      return true; // افتراض أنه مستخدم جديد في حالة الخطأ
+      return true;
     }
   }
 
@@ -32,6 +30,7 @@ class UserService {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_userNameKey, name.trim());
       await prefs.setBool(_firstTimeUserKey, false);
+      _cachedUserName = name.trim();
       
       return true;
     } catch (e) {
@@ -43,9 +42,14 @@ class UserService {
   Future<String> getUserName() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      return prefs.getString(_userNameKey) ?? _defaultName;
+      final name = prefs.getString(_userNameKey);
+      if (name != null && name.isNotEmpty) {
+        _cachedUserName = name;
+        return name;
+      }
+      return ''; // إرجاع قيمة فارغة بدلاً من قيمة افتراضية
     } catch (e) {
-      return _defaultName;
+      return '';
     }
   }
 
@@ -56,6 +60,7 @@ class UserService {
       
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_userNameKey, newName.trim());
+      _cachedUserName = newName.trim();
       
       return true;
     } catch (e) {
@@ -63,12 +68,13 @@ class UserService {
     }
   }
 
-  /// إعادة تعيين بيانات المستخدم (للاختبار أو إعادة التشغيل)
+  /// إعادة تعيين بيانات المستخدم
   Future<bool> resetUserData() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_userNameKey);
       await prefs.setBool(_firstTimeUserKey, true);
+      _cachedUserName = null;
       
       return true;
     } catch (e) {
@@ -76,18 +82,9 @@ class UserService {
     }
   }
 
-  /// الحصول على اسم المستخدم بشكل متزامن (للاستخدام في الواجهة)
-  /// يجب استدعاء هذه الدالة فقط بعد التأكد من تحميل البيانات
+  /// الحصول على اسم المستخدم بشكل متزامن
   String getUserNameSync() {
-    // هذه الدالة تستخدم قيمة مخزنة مؤقتاً في الذاكرة
-    return _cachedUserName ?? _defaultName;
-  }
-
-  String? _cachedUserName;
-
-  /// تحميل وتخزين اسم المستخدم في الذاكرة المؤقتة
-  Future<void> loadUserName() async {
-    _cachedUserName = await getUserName();
+    return _cachedUserName ?? '';
   }
 
   /// تحديث الذاكرة المؤقتة
@@ -106,6 +103,8 @@ class UserService {
   /// الحصول على رسالة ترحيبية مخصصة
   Future<String> getWelcomeMessage() async {
     final name = await getUserName();
+    if (name.isEmpty) return 'مرحباً';
+    
     final hour = DateTime.now().hour;
     
     String greeting;
@@ -133,7 +132,7 @@ class UserService {
       };
     } catch (e) {
       return {
-        'name': _defaultName,
+        'name': '',
         'isFirstTime': true,
         'registrationDate': DateTime.now().toIso8601String(),
         'lastLoginDate': DateTime.now().toIso8601String(),
@@ -147,12 +146,16 @@ class UserService {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('last_login_date', DateTime.now().toIso8601String());
       
-      // إذا كانت هذه أول زيارة، احفظ تاريخ التسجيل
       if (!prefs.containsKey('registration_date')) {
         await prefs.setString('registration_date', DateTime.now().toIso8601String());
       }
     } catch (e) {
       // تجاهل الأخطاء
     }
+  }
+
+  /// تحميل وتخزين اسم المستخدم في الذاكرة المؤقتة
+  Future<void> loadUserName() async {
+    _cachedUserName = await getUserName();
   }
 }

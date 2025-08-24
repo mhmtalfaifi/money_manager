@@ -3,7 +3,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:provider/provider.dart';
 import '../utils/app_colors.dart';
+import '../services/user_service.dart';
+import '../providers/user_provider.dart';
 import 'home_screen.dart';
 
 class WelcomeScreen extends StatefulWidget {
@@ -91,34 +94,46 @@ class _WelcomeScreenState extends State<WelcomeScreen>
     setState(() => _isLoading = true);
     
     try {
-      // حفظ الاسم
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('user_name', _nameController.text.trim());
+      final name = _nameController.text.trim();
       
-      // تأثير اللمس
-      HapticFeedback.mediumImpact();
+      // حفظ الاسم في UserService
+      final userService = UserService();
+      final success = await userService.saveUserName(name);
       
-      // عرض الميزات بدلاً من الانتقال مباشرة
-      setState(() {
-        _showFeatures = true;
-        _isLoading = false;
-      });
-      
-      // إعادة تشغيل الأنيميشن لعرض الميزات
-      _animationController.reset();
-      _animationController.forward();
-      
+      if (success && mounted) {
+        // تحديث UserProvider
+        final userProvider = context.read<UserProvider>();
+        await userProvider.updateUserName(name);
+        
+        // الانتقال لشاشة المميزات
+        setState(() {
+          _showFeatures = true;
+          _isLoading = false;
+        });
+        
+        // الانتظار قليلاً ثم الانتقال للصفحة الرئيسية
+        await Future.delayed(const Duration(seconds: 3));
+        
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const HomeScreen()),
+          );
+        }
+      }
     } catch (e) {
-      // في حالة الخطأ
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('حدث خطأ، يرجى المحاولة مرة أخرى'),
+            content: Text('حدث خطأ في حفظ الاسم'),
             backgroundColor: Colors.red,
           ),
         );
       }
-      setState(() => _isLoading = false);
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -170,24 +185,32 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // الأيقونة الرئيسية - تم التعديل هنا
+                    // الأيقونة الرئيسية - استخدام أيقونة بديلة
                     Container(
                       width: 120,
                       height: 120,
                       decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            AppColors.primary,
+                            AppColors.primary.withOpacity(0.8),
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
                         borderRadius: BorderRadius.circular(32),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
+                            color: AppColors.primary.withOpacity(0.3),
                             blurRadius: 24,
                             offset: const Offset(0, 8),
                           ),
                         ],
                       ),
-                      child: Image.asset(
-                        'assets/images/icon.png',
-                        width: 100,
-                        height: 100,
+                      child: const Icon(
+                        Icons.account_balance_wallet_rounded,
+                        size: 60,
+                        color: Colors.white,
                       ),
                     ),
                     
@@ -407,7 +430,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
             LinearProgressIndicator(
               value: 1.0, // مكتمل بالكامل
               backgroundColor: Colors.grey[300],
-              valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+              valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
               minHeight: 4,
             ),
             
@@ -418,7 +441,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                   children: [
                     // العنوان
                     const Text(
-                      'اكتشف ميزات التطبيق',
+                      'اكتشف مميزات التطبيق',
                       style: TextStyle(
                         fontSize: 28,
                         fontWeight: FontWeight.bold,
@@ -441,7 +464,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                     
                     const SizedBox(height: 40),
                     
-                    // عرض الميزات بشكل تفصيلي
+                    // عرض المميزات بشكل تفصيلي
                     ..._features.map((feature) => 
                       _buildDetailedFeatureItem(feature)
                     ).toList(),

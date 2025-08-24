@@ -97,165 +97,129 @@ Future<void> _setupSystemSettings() async {
   }
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
 
   @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
+  bool _isLoading = true;
+  bool _showWelcome = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _checkFirstTimeUser();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  Future<void> _checkFirstTimeUser() async {
+    try {
+      final userService = UserService();
+      final isFirstTime = await userService.isFirstTimeUser();
+      final userName = await userService.getUserName();
+      
+      // إذا كان مستخدم جديد أو لا يوجد اسم محفوظ
+      final shouldShowWelcome = isFirstTime || userName.isEmpty;
+      
+      if (mounted) {
+        setState(() {
+          _showWelcome = shouldShowWelcome;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _showWelcome = true;
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    
+    if (state == AppLifecycleState.resumed) {
+      // تحديث البيانات عند العودة للتطبيق
+      _refreshData();
+    }
+  }
+
+  void _refreshData() {
+    // يمكن إضافة منطق تحديث البيانات هنا
+  }
+
+  @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return MaterialApp(
+        title: 'إدارة المصروفات',
+        theme: _buildTheme(),
+        home: const Scaffold(
+          backgroundColor: Color(0xFFF5F2E9),
+          body: Center(
+            child: CircularProgressIndicator(
+              color: Color(0xFFC5D300),
+            ),
+          ),
+        ),
+        debugShowCheckedModeBanner: false,
+      );
+    }
+
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => TransactionProvider()),
         ChangeNotifierProvider(create: (_) => UserProvider()),
       ],
       child: MaterialApp(
-        title: 'مدير الأموال',
+        title: 'إدارة المصروفات',
+        theme: _buildTheme(),
+        home: _showWelcome ? const WelcomeScreen() : const HomeScreen(),
         debugShowCheckedModeBanner: false,
-        
-        // دعم اللغة العربية
         locale: const Locale('ar', 'SA'),
+        supportedLocales: const [
+          Locale('ar', 'SA'),
+        ],
         localizationsDelegates: const [
           GlobalMaterialLocalizations.delegate,
           GlobalWidgetsLocalizations.delegate,
           GlobalCupertinoLocalizations.delegate,
         ],
-        supportedLocales: const [
-          Locale('ar', 'SA'),
-        ],
-        
-        // معالج الأخطاء على مستوى التطبيق
-        builder: (context, child) {
-          return MediaQuery(
-            data: MediaQuery.of(context).copyWith(
-              textScaler: const TextScaler.linear(1.0), // منع تكبير النص من إعدادات النظام
-            ),
-            child: child!,
-          );
-        },
-        
-        // التصميم
-        theme: _buildAppTheme(),
-        
-        // الوضع الليلي (معطل حالياً)
-        darkTheme: _buildDarkTheme(),
-        themeMode: ThemeMode.light,
-        
-        // الصفحة الرئيسية
-        home: const AppWrapper(),
-        
-        // معالجة الأخطاء في التنقل
-        onGenerateRoute: (settings) {
-          return MaterialPageRoute(
-            builder: (context) => const AppWrapper(),
-          );
-        },
-        
-        onUnknownRoute: (settings) {
-          return MaterialPageRoute(
-            builder: (context) => const AppWrapper(),
-          );
-        },
       ),
     );
   }
 
-  ThemeData _buildAppTheme() {
+  ThemeData _buildTheme() {
     return ThemeData(
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: const Color(0xFFC5D300), // أخضر فاتح
-        brightness: Brightness.light,
-        primary: const Color(0xFFC5D300), // أخضر فاتح
-        onPrimary: Colors.white,
-        secondary: const Color(0xFF473D33), // بني داكن
-        onSecondary: Colors.white,
-        background: const Color(0xFFF5F2E9), // خلفية بيج فاتح
-      ),
-      useMaterial3: true,
-      fontFamily: 'Tajawal',
-      
-      // تخصيص الألوان
-      primaryColor: const Color(0xFFC5D300), // أخضر فاتح
-      scaffoldBackgroundColor: const Color(0xFFF5F2E9), // خلفية بيج فاتح
-      
-      // تخصيص AppBar
+      primarySwatch: Colors.green,
+      fontFamily: 'Amiri',
+      scaffoldBackgroundColor: const Color(0xFFF5F2E9),
       appBarTheme: const AppBarTheme(
-        centerTitle: true,
+        backgroundColor: Colors.transparent,
         elevation: 0,
-        backgroundColor: Color(0xFFF5F2E9), // خلفية بيج فاتح
-        foregroundColor: Color(0xFF473D33), // بني داكن
+        iconTheme: IconThemeData(color: Color(0xFF473D33)),
         titleTextStyle: TextStyle(
-          fontFamily: 'Tajawal',
-          fontSize: 20,
+          color: Color(0xFF473D33),
+          fontSize: 18,
           fontWeight: FontWeight.bold,
-          color: Color(0xFF473D33), // بني داكن
+          fontFamily: 'Amiri',
         ),
       ),
-      
-      // تخصيص البطاقات
-      cardTheme: CardThemeData(
-        elevation: 0,
-        color: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      ),
-      
-      // تخصيص الأزرار
-      elevatedButtonTheme: ElevatedButtonThemeData(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFFC5D300), // أخضر فاتح
-          foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          elevation: 0,
-        ),
-      ),
-      
-      // تخصيص حقول الإدخال
-      inputDecorationTheme: InputDecorationTheme(
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Colors.grey),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFC5D300), width: 2), // أخضر فاتح
-        ),
-        filled: true,
-        fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      ),
-      
-      // تخصيص النصوص
-      textTheme: const TextTheme(
-        bodyLarge: TextStyle(color: Color(0xFF473D33)), // بني داكن
-        bodyMedium: TextStyle(color: Color(0xFF473D33)), // بني داكن
-        titleLarge: TextStyle(color: Color(0xFF473D33)), // بني داكن
-        titleMedium: TextStyle(color: Color(0xFF473D33)), // بني داكن
-        titleSmall: TextStyle(color: Color(0xFF473D33)), // بني داكن
-      ),
-      
-      // تخصيص الأيقونات
-      iconTheme: const IconThemeData(
-        color: Color(0xFF473D33), // بني داكن
-      ),
-    );
-  }
-
-  ThemeData _buildDarkTheme() {
-    return ThemeData(
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: const Color(0xFFC5D300), // أخضر فاتح
-        brightness: Brightness.dark,
-      ),
-      useMaterial3: true,
-      fontFamily: 'Tajawal',
     );
   }
 }
-
 /// غلاف التطبيق الذي يقرر أي شاشة يعرض
 class AppWrapper extends StatefulWidget {
   const AppWrapper({super.key});

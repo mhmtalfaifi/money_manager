@@ -1,12 +1,10 @@
-// providers/user_provider.dart
-
 import 'package:flutter/material.dart';
 import '../services/user_service.dart';
 
 class UserProvider with ChangeNotifier {
   final UserService _userService = UserService();
   
-  String _userName = 'أحمد';
+  String _userName = '';  // تغيير القيمة الافتراضية إلى فارغة
   bool _isLoading = false;
   String? _welcomeMessage;
 
@@ -21,10 +19,12 @@ class UserProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      _userName = await _userService.getUserName();
+      final loadedName = await _userService.getUserName();
+      _userName = loadedName;  // استخدام الاسم المحفوظ بدلاً من القيمة الافتراضية
       _welcomeMessage = await _userService.getWelcomeMessage();
     } catch (e) {
-      _userName = 'أحمد'; // القيمة الافتراضية
+      // في حالة الخطأ فقط، استخدم القيمة الافتراضية
+      _userName = await _userService.getUserName();
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -82,7 +82,7 @@ class UserProvider with ChangeNotifier {
       final success = await _userService.resetUserData();
       
       if (success) {
-        _userName = 'أحمد';
+        _userName = '';
         _welcomeMessage = null;
         notifyListeners();
         return true;

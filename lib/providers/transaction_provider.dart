@@ -8,6 +8,31 @@ import '../services/cache_service.dart';
 import '../services/memory_manager_service.dart';
 import 'package:intl/intl.dart';
 
+// إضافة app_error إذا لم يكن موجود
+class AppError {
+  final ErrorType type;
+  final String message;
+  final DateTime timestamp;
+  final StackTrace? stackTrace;
+  final String? context;
+
+  AppError({
+    required this.type,
+    required this.message,
+    required this.timestamp,
+    this.stackTrace,
+    this.context,
+  });
+
+  static AppError validation(String message) => AppError(
+    type: ErrorType.validation,
+    message: message,
+    timestamp: DateTime.now(),
+  );
+}
+
+enum ErrorType { database, network, validation, general, runtime, file }
+
 class TransactionProvider extends ChangeNotifier {
   final DatabaseHelper _db = DatabaseHelper.instance;
   final ErrorHandlerService _errorHandler = ErrorHandlerService();
@@ -44,6 +69,12 @@ class TransactionProvider extends ChangeNotifier {
 
   /// تحميل البيانات الأولية مع معالجة الأخطاء
   Future<void> loadInitialData() async {
+    if (_transactions.isNotEmpty && !_isLoading) {
+      // البيانات محملة بالفعل
+      notifyListeners();
+      return;
+    }
+    
     await _performOperation(
       operation: () async {
         await _memoryManager.optimizeForScreen('home');
@@ -61,48 +92,79 @@ class TransactionProvider extends ChangeNotifier {
           _loadCitiesWithCache(),
           _loadBudgetsWithCache(),
         ]);
+
+        // حساب الملخص الشهري
+        await calculateMonthlySummary();
       },
       loadingMessage: 'جاري تحميل البيانات...',
     );
   }
 
+  /// حساب الملخص الشهري
+  Future<void> calculateMonthlySummary() async {
+  try {
+    final monthTransactions = _transactions.where((t) => 
+      t.date.year == _selectedMonth.year && 
+      t.date.month == _selectedMonth.month
+    ).toList();
+
+    double totalIncome = 0;
+    double totalExpenses = 0;
+    double totalCommitments = 0;
+    Map<String, double> expensesByCategory = {};
+    Map<String, double> expensesByCity = {};
+
+    for (final transaction in monthTransactions) {
+      switch (transaction.type) {
+        case 'income':
+          totalIncome += transaction.amount;
+          break;
+        case 'expense':
+          totalExpenses += transaction.amount;
+          expensesByCategory[transaction.category] = 
+            (expensesByCategory[transaction.category] ?? 0) + transaction.amount;
+          expensesByCity[transaction.city] = 
+            (expensesByCity[transaction.city] ?? 0) + transaction.amount;
+          break;
+        case 'commitment':
+          totalCommitments += transaction.amount;
+          break;
+      }
+    }
+
+    _monthlySummary = MonthlySummary(
+      totalIncome: totalIncome,
+      totalExpenses: totalExpenses,
+      totalCommitments: totalCommitments,
+      month: DateTime(_selectedMonth.year, _selectedMonth.month),
+      expensesByCategory: expensesByCategory,
+      expensesByCity: expensesByCity,
+    );
+  } catch (e) {
+    _errorHandler.logSimpleError('خطأ في حساب الملخص الشهري: $e');
+  }
+}
+
+
   /// تحميل المعاملات مع التخزين المؤقت
   Future<void> _loadTransactionsWithCache() async {
-    final cacheKey = 'month_${_selectedMonth.year}_${_selectedMonth.month}';
-    
     if (_enableCaching) {
-      final cachedTransactions = _cache.getCachedTransactions(cacheKey);
-      final cachedSummary = _cache.getCachedMonthlySummary(_selectedMonth);
-      
-      if (cachedTransactions != null && cachedSummary != null) {
-        _transactions = cachedTransactions;
-        _monthlySummary = cachedSummary;
+      final cached = _cache.getCachedTransactions('monthly_${_selectedMonth.year}_${_selectedMonth.month}');
+      if (cached != null) {
+        _transactions = cached;
         return;
       }
     }
     
-    // تحميل من قاعدة البيانات
     final transactions = await _errorHandler.handleDatabaseOperation(
       () => _db.getTransactionsByMonth(_selectedMonth),
       errorMessage: 'خطأ في تحميل المعاملات',
     );
     
-    final summary = await _errorHandler.handleDatabaseOperation(
-      () => _db.getMonthlySummary(_selectedMonth),
-      errorMessage: 'خطأ في حساب الملخص الشهري',
-    );
-    
     if (transactions != null) {
       _transactions = transactions;
       if (_enableCaching) {
-        _cache.cacheTransactions(cacheKey, transactions);
-      }
-    }
-    
-    if (summary != null) {
-      _monthlySummary = summary;
-      if (_enableCaching) {
-        _cache.cacheMonthlySummary(_selectedMonth, summary);
+        _cache.cacheTransactions('monthly_${_selectedMonth.year}_${_selectedMonth.month}', transactions);
       }
     }
   }
@@ -139,9 +201,9 @@ class TransactionProvider extends ChangeNotifier {
   /// تحميل المدن مع التخزين المؤقت
   Future<void> _loadCitiesWithCache() async {
     if (_enableCaching) {
-      final cached = _cache.getCachedCategories('cities');
+      final cached = _cache.get<List<CityModel>>('cities');
       if (cached != null) {
-        _cities = cached as List<CityModel>;
+        _cities = cached;
         return;
       }
     }
@@ -153,6 +215,9 @@ class TransactionProvider extends ChangeNotifier {
     
     if (cities != null) {
       _cities = cities;
+      if (_enableCaching) {
+        _cache.set('cities', cities, ttl: const Duration(hours: 24));
+      }
     }
   }
 
@@ -186,6 +251,7 @@ class TransactionProvider extends ChangeNotifier {
           
           // إعادة تحميل البيانات
           await _loadTransactionsWithCache();
+          await calculateMonthlySummary();
           
           // التحقق من تجاوز الميزانية
           if (transaction.type == 'expense') {
@@ -213,6 +279,7 @@ class TransactionProvider extends ChangeNotifier {
         if (rowsAffected > 0) {
           _cache.invalidateRelatedCache('transactions');
           await _loadTransactionsWithCache();
+          await calculateMonthlySummary();
           return true;
         }
         return false;
@@ -232,6 +299,7 @@ class TransactionProvider extends ChangeNotifier {
         if (rowsAffected > 0) {
           _cache.invalidateRelatedCache('transactions');
           await _loadTransactionsWithCache();
+          await calculateMonthlySummary();
           return true;
         }
         return false;
@@ -352,9 +420,6 @@ class TransactionProvider extends ChangeNotifier {
 
   void _setLoading(bool loading, [String? message]) {
     _isLoading = loading;
-    if (message != null && loading) {
-      // يمكن عرض رسالة التحميل هنا
-    }
     notifyListeners();
   }
 
@@ -413,7 +478,6 @@ class TransactionProvider extends ChangeNotifier {
       final progress = getCategoryBudgetProgress(category);
       
       if (progress >= 0.8) {
-        // يمكن إرسال إشعار هنا
         if (context != null) {
           final percentage = progress * 100;
           String message = percentage >= 100
@@ -451,17 +515,56 @@ class TransactionProvider extends ChangeNotifier {
   /// تغيير الشهر المحدد مع إعادة تحميل البيانات
   Future<void> changeMonth(DateTime month, {BuildContext? context}) async {
     if (_selectedMonth.year == month.year && _selectedMonth.month == month.month) {
-      return; // نفس الشهر، لا حاجة للتحديث
+      return;
     }
     
     await _performOperation(
       operation: () async {
         _selectedMonth = month;
         await _loadTransactionsWithCache();
+        await calculateMonthlySummary();
       },
       loadingMessage: 'جاري تحميل بيانات ${DateFormat('MMMM yyyy', 'ar').format(month)}...',
       context: context,
     );
+  }
+
+  // ========== دوال مساعدة موجودة مع تحسينات ==========
+
+  List<CategoryModel> getCategoriesByType(String type) {
+    return _categories.where((cat) => cat.type == type).toList();
+  }
+
+  BudgetModel? getBudgetForCategory(String category) {
+    try {
+      return _budgets.firstWhere((budget) => budget.category == category);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  double getCategoryBudgetProgress(String category) {
+    final budget = getBudgetForCategory(category);
+    if (budget == null) return 0;
+    
+    final spent = _monthlySummary?.expensesByCategory[category] ?? 0;
+    if (budget.amount == 0) return 0;
+    
+    return (spent / budget.amount).clamp(0.0, 2.0); // يسمح بتجاوز 200%
+  }
+
+  List<TransactionModel> getRecentTransactions({int limit = 5}) {
+    final cacheKey = 'recent_$limit';
+    final cached = _cache.get<List<TransactionModel>>(cacheKey);
+    if (cached != null) return cached;
+    
+    final sorted = List<TransactionModel>.from(_transactions)
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    
+    final recent = sorted.take(limit).toList();
+    _cache.set(cacheKey, recent, ttl: const Duration(minutes: 1));
+    
+    return recent;
   }
 
   // ========== البحث والفلترة المتقدمة ==========
@@ -562,148 +665,6 @@ class TransactionProvider extends ChangeNotifier {
     return parts.join('_');
   }
 
-  // ========== الإحصائيات المتقدمة ==========
-
-  /// الحصول على إحصائيات مخصصة مع تخزين مؤقت
-  Map<String, dynamic> getAdvancedStatistics({
-    DateTime? startDate,
-    DateTime? endDate,
-  }) {
-    final statsKey = 'advanced_${startDate?.toIso8601String() ?? 'none'}_${endDate?.toIso8601String() ?? 'none'}';
-    
-    final cached = _cache.getCachedStatistics(statsKey);
-    if (cached != null) return cached;
-    
-    final transactions = startDate != null || endDate != null
-        ? filterTransactions(startDate: startDate, endDate: endDate)
-        : _transactions;
-    
-    final stats = <String, dynamic>{
-      'totalTransactions': transactions.length,
-      'totalIncome': _calculateTotalByType(transactions, 'income'),
-      'totalExpenses': _calculateTotalByType(transactions, 'expense'),
-      'totalCommitments': _calculateTotalByType(transactions, 'commitment'),
-      'averageTransaction': _calculateAverageTransaction(transactions),
-      'largestTransaction': _findLargestTransaction(transactions),
-      'smallestTransaction': _findSmallestTransaction(transactions),
-      'mostActiveDay': _findMostActiveDay(transactions),
-      'categoryBreakdown': _calculateCategoryBreakdown(transactions),
-      'cityBreakdown': _calculateCityBreakdown(transactions),
-      'monthlyTrends': _calculateMonthlyTrends(transactions),
-    };
-    
-    _cache.cacheStatistics(statsKey, stats);
-    return stats;
-  }
-
-  double _calculateTotalByType(List<TransactionModel> transactions, String type) {
-    return transactions
-        .where((t) => t.type == type)
-        .fold(0.0, (sum, t) => sum + t.amount);
-  }
-
-  double _calculateAverageTransaction(List<TransactionModel> transactions) {
-    if (transactions.isEmpty) return 0.0;
-    final total = transactions.fold(0.0, (sum, t) => sum + t.amount);
-    return total / transactions.length;
-  }
-
-  TransactionModel? _findLargestTransaction(List<TransactionModel> transactions) {
-    if (transactions.isEmpty) return null;
-    return transactions.reduce((a, b) => a.amount > b.amount ? a : b);
-  }
-
-  TransactionModel? _findSmallestTransaction(List<TransactionModel> transactions) {
-    if (transactions.isEmpty) return null;
-    return transactions.reduce((a, b) => a.amount < b.amount ? a : b);
-  }
-
-  String _findMostActiveDay(List<TransactionModel> transactions) {
-    if (transactions.isEmpty) return 'لا توجد بيانات';
-    
-    final dayCount = <String, int>{};
-    for (final transaction in transactions) {
-      final dayName = DateFormat('EEEE', 'ar').format(transaction.date);
-      dayCount[dayName] = (dayCount[dayName] ?? 0) + 1;
-    }
-    
-    return dayCount.entries
-        .reduce((a, b) => a.value > b.value ? a : b)
-        .key;
-  }
-
-  Map<String, double> _calculateCategoryBreakdown(List<TransactionModel> transactions) {
-    final breakdown = <String, double>{};
-    for (final transaction in transactions) {
-      if (transaction.type != 'income') {
-        breakdown[transaction.category] = 
-            (breakdown[transaction.category] ?? 0) + transaction.amount;
-      }
-    }
-    return breakdown;
-  }
-
-  Map<String, double> _calculateCityBreakdown(List<TransactionModel> transactions) {
-    final breakdown = <String, double>{};
-    for (final transaction in transactions) {
-      if (transaction.type != 'income') {
-        breakdown[transaction.city] = 
-            (breakdown[transaction.city] ?? 0) + transaction.amount;
-      }
-    }
-    return breakdown;
-  }
-
-  Map<String, double> _calculateMonthlyTrends(List<TransactionModel> transactions) {
-    final trends = <String, double>{};
-    for (final transaction in transactions) {
-      final monthKey = DateFormat('yyyy-MM').format(transaction.date);
-      trends[monthKey] = (trends[monthKey] ?? 0) + transaction.amount;
-    }
-    return trends;
-  }
-
-  // ========== دوال مساعدة موجودة مع تحسينات ==========
-
-  List<CategoryModel> getCategoriesByType(String type) {
-    final cached = _cache.getCachedCategories(type);
-    if (cached != null) return cached;
-    
-    return _categories.where((cat) => cat.type == type).toList();
-  }
-
-  BudgetModel? getBudgetForCategory(String category) {
-    try {
-      return _budgets.firstWhere((budget) => budget.category == category);
-    } catch (e) {
-      return null;
-    }
-  }
-
-  double getCategoryBudgetProgress(String category) {
-    final budget = getBudgetForCategory(category);
-    if (budget == null) return 0;
-    
-    final spent = _monthlySummary?.expensesByCategory[category] ?? 0;
-    if (budget.amount == 0) return 0;
-    
-    return (spent / budget.amount).clamp(0.0, 2.0); // يسمح بتجاوز 200%
-  }
-
-  List<TransactionModel> getRecentTransactions({int limit = 5}) {
-    final cacheKey = 'recent_$limit';
-    final cached = _cache.get<List<TransactionModel>>(cacheKey);
-    if (cached != null) return cached;
-    
-    final sorted = List<TransactionModel>.from(_transactions)
-      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-    
-    final recent = sorted.take(limit).toList();
-    _cache.set(cacheKey, recent, ttl: const Duration(minutes: 1));
-    
-    return recent;
-  }
-
   // ========== إدارة الأداء والذاكرة ==========
 
   /// تحسين الأداء حسب الشاشة
@@ -743,4 +704,22 @@ class TransactionProvider extends ChangeNotifier {
     performCleanup();
     super.dispose();
   }
+}
+
+// ========== نماذج البيانات المطلوبة ==========
+
+class MonthlySummary {
+  final double totalIncome;
+  final double totalExpenses;
+  final double totalCommitments;
+  final double remainingBalance;
+  final Map<String, double> expensesByCategory;
+
+  MonthlySummary({
+    required this.totalIncome,
+    required this.totalExpenses,
+    required this.totalCommitments,
+    required this.remainingBalance,
+    required this.expensesByCategory,
+  });
 }

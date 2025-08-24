@@ -395,7 +395,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               _buildStatItem(
                 'المتبقي',
-                AppConstants.formatMoney(summary.balance),
+                AppConstants.formatMoney(summary.netIncome),
                 Icons.account_balance_wallet_rounded,
               ),
             ],
