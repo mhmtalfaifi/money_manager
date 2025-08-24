@@ -9,8 +9,6 @@ import '../models/transaction_model.dart';
 import '../utils/app_colors.dart';
 import '../widgets/stat_card.dart';
 import '../utils/app_constants.dart';
-import '../models/transaction_model.dart' as models; // أضف alias
-
 
 class ReportsScreen extends StatefulWidget {
   const ReportsScreen({super.key});
@@ -190,7 +188,7 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
   }
 
   // تاب النظرة العامة
-  Widget _buildOverviewTab(TransactionProvider provider, models.MonthlySummary? summary) {
+  Widget _buildOverviewTab(TransactionProvider provider, MonthlySummary? summary) {
     if (summary == null) {
       return const Center(
         child: Text(
@@ -292,7 +290,7 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
   }
 
   // تاب الفئات
-  Widget _buildCategoriesTab(TransactionProvider provider, models.MonthlySummary? summary) {
+  Widget _buildCategoriesTab(TransactionProvider provider, MonthlySummary? summary) {
     if (summary == null || summary.expensesByCategory.isEmpty) {
       return const Center(
         child: Text(
@@ -423,7 +421,7 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
   }
 
   // تاب المدن
-  Widget _buildCitiesTab(TransactionProvider provider, models.MonthlySummary? summary) {
+  Widget _buildCitiesTab(TransactionProvider provider, MonthlySummary? summary) {
     if (summary == null || summary.expensesByCity.isEmpty) {
       return const Center(
         child: Text(
@@ -552,11 +550,12 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
   }
 
   // الرسم البياني الدائري
-  Widget _buildPieChart(models.MonthlySummary summary) {
-  if (summary.expensesByCategory.isEmpty) {
-    return Center(child: Text('لا توجد بيانات'));
-  }
-  final data = summary.expensesByCategory.entries.toList();
+  Widget _buildPieChart(MonthlySummary summary) {
+    if (summary.expensesByCategory.isEmpty) {
+      return const Center(child: Text('لا توجد بيانات'));
+    }
+    
+    final data = summary.expensesByCategory.entries.toList();
     final colors = [
       AppColors.income,
       AppColors.expense,
@@ -592,7 +591,7 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
   }
 
   // الرسم البياني الأفقي
-Widget _buildBarChart(models.MonthlySummary summary) {
+  Widget _buildBarChart(MonthlySummary summary) {
     final data = summary.expensesByCategory.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
     
@@ -607,8 +606,6 @@ Widget _buildBarChart(models.MonthlySummary summary) {
         barTouchData: BarTouchData(
           enabled: true,
           touchTooltipData: BarTouchTooltipData(
-            // تم إزالة tooltipBgColor في الإصدارات الحديثة
-            // استخدام الطريقة القديمة البسيطة
             tooltipMargin: 8,
             getTooltipItem: (group, groupIndex, rod, rodIndex) {
               return BarTooltipItem(
@@ -675,7 +672,7 @@ Widget _buildBarChart(models.MonthlySummary summary) {
             barRods: [
               BarChartRodData(
                 toY: entry.value.value,
-                color: AppColors.expense, // استخدام color بدلاً من gradient للتبسيط
+                color: AppColors.expense,
                 width: 20,
                 borderRadius: BorderRadius.circular(4),
               ),
@@ -684,4 +681,5 @@ Widget _buildBarChart(models.MonthlySummary summary) {
         }).toList(),
       ),
     );
-  }}
+  }
+}

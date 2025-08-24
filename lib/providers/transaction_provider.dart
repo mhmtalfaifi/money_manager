@@ -2,43 +2,33 @@
 
 import 'package:flutter/material.dart';
 import '../models/transaction_model.dart';
+import '../models/app_error.dart'; // استخدام التعريف الموحد
 import '../helpers/database_helper.dart';
 import '../services/error_handler_service.dart';
 import '../services/cache_service.dart';
 import '../services/memory_manager_service.dart';
 import 'package:intl/intl.dart';
 
-// إضافة app_error إذا لم يكن موجود
-class AppError {
-  final ErrorType type;
-  final String message;
-  final DateTime timestamp;
-  final StackTrace? stackTrace;
-  final String? context;
-
-  AppError({
-    required this.type,
-    required this.message,
-    required this.timestamp,
-    this.stackTrace,
-    this.context,
-  });
-
-  static AppError validation(String message) => AppError(
-    type: ErrorType.validation,
-    message: message,
-    timestamp: DateTime.now(),
-  );
-}
-
-enum ErrorType { database, network, validation, general, runtime, file }
-
 class TransactionProvider extends ChangeNotifier {
   final DatabaseHelper _db = DatabaseHelper.instance;
   final ErrorHandlerService _errorHandler = ErrorHandlerService();
   final CacheService _cache = CacheService();
   final MemoryManagerService _memoryManager = MemoryManagerService();
-  
+  final DatabaseHelper _databaseHelper = DatabaseHelper.instance;
+
+  // أضف هذه الطرق
+  Future<void> _loadTransactions() async {
+    await _loadTransactionsWithCache();
+  }
+
+  Future<void> _loadBudgets() async {
+    await _loadBudgetsWithCache();
+  }
+
+  Future<void> _loadCategories() async {
+    await _loadCategoriesWithCache();
+  }
+
   // البيانات
   List<TransactionModel> _transactions = [];
   List<CategoryModel> _categories = [];
@@ -75,76 +65,92 @@ class TransactionProvider extends ChangeNotifier {
       return;
     }
     
-    await _performOperation(
-      operation: () async {
-        await _memoryManager.optimizeForScreen('home');
-        
-        // معالجة الالتزامات الشهرية
-        await _errorHandler.handleDatabaseOperation(
-          () => _db.processMonthlyCommitments(_selectedMonth),
-          errorMessage: 'خطأ في معالجة الالتزامات الشهرية',
-        );
+    _setLoading(true);
+    
+    try {
+      // تحميل البيانات بشكل متوازي
+      await Future.wait([
+        _loadTransactions(),
+        _loadBudgets(),
+        _loadCategories(),
+      ]);
+      
+      // حساب الملخص فوراً
+      await calculateMonthlySummary();
+      
+      // إشعار الواجهة بالتحديث
+      notifyListeners();
+    } catch (e) {
+      _setError('خطأ في تحميل البيانات: ${e.toString()}');
+    } finally {
+      _setLoading(false);
+    }
+  }
 
-        // تحميل البيانات بشكل متوازي مع معالجة الأخطاء
-        await Future.wait([
-          _loadTransactionsWithCache(),
-          _loadCategoriesWithCache(),
-          _loadCitiesWithCache(),
-          _loadBudgetsWithCache(),
-        ]);
-
-        // حساب الملخص الشهري
-        await calculateMonthlySummary();
-      },
-      loadingMessage: 'جاري تحميل البيانات...',
-    );
+  Future<List<TransactionModel>> loadRecentTransactionsImmediately() async {
+    try {
+      final db = await _databaseHelper.database;
+      final List<Map<String, dynamic>> maps = await db.query(
+        'transactions',
+        orderBy: 'createdAt DESC',
+        limit: 5,
+      );
+      
+      final transactions = maps.map((map) => TransactionModel.fromMap(map)).toList();
+      
+      // تحديث الكاش
+      _cache.set('recent_5', transactions, ttl: const Duration(minutes: 1));
+      
+      return transactions;
+    } catch (e) {
+      return [];
+    }
   }
 
   /// حساب الملخص الشهري
   Future<void> calculateMonthlySummary() async {
-  try {
-    final monthTransactions = _transactions.where((t) => 
-      t.date.year == _selectedMonth.year && 
-      t.date.month == _selectedMonth.month
-    ).toList();
+    try {
+      final monthTransactions = _transactions.where((t) => 
+        t.date.year == _selectedMonth.year && 
+        t.date.month == _selectedMonth.month
+      ).toList();
+      
+      double totalIncome = 0;
+      double totalExpenses = 0;
+      double totalCommitments = 0;
+      Map<String, double> expensesByCategory = {};
+      Map<String, double> expensesByCity = {};
 
-    double totalIncome = 0;
-    double totalExpenses = 0;
-    double totalCommitments = 0;
-    Map<String, double> expensesByCategory = {};
-    Map<String, double> expensesByCity = {};
-
-    for (final transaction in monthTransactions) {
-      switch (transaction.type) {
-        case 'income':
-          totalIncome += transaction.amount;
-          break;
-        case 'expense':
-          totalExpenses += transaction.amount;
-          expensesByCategory[transaction.category] = 
-            (expensesByCategory[transaction.category] ?? 0) + transaction.amount;
-          expensesByCity[transaction.city] = 
-            (expensesByCity[transaction.city] ?? 0) + transaction.amount;
-          break;
-        case 'commitment':
-          totalCommitments += transaction.amount;
-          break;
+      for (final transaction in monthTransactions) {
+        switch (transaction.type) {
+          case 'income':
+            totalIncome += transaction.amount;
+            break;
+          case 'expense':
+            totalExpenses += transaction.amount;
+            expensesByCategory[transaction.category] = 
+              (expensesByCategory[transaction.category] ?? 0) + transaction.amount;
+            expensesByCity[transaction.city] = 
+              (expensesByCity[transaction.city] ?? 0) + transaction.amount;
+            break;
+          case 'commitment':
+            totalCommitments += transaction.amount;
+            break;
+        }
       }
+
+      _monthlySummary = MonthlySummary(
+        totalIncome: totalIncome,
+        totalExpenses: totalExpenses,
+        totalCommitments: totalCommitments,
+        month: DateTime(_selectedMonth.year, _selectedMonth.month),
+        expensesByCategory: expensesByCategory,
+        expensesByCity: expensesByCity,
+      );
+    } catch (e) {
+      _errorHandler.logSimpleError('خطأ في حساب الملخص الشهري: $e');
     }
-
-    _monthlySummary = MonthlySummary(
-      totalIncome: totalIncome,
-      totalExpenses: totalExpenses,
-      totalCommitments: totalCommitments,
-      month: DateTime(_selectedMonth.year, _selectedMonth.month),
-      expensesByCategory: expensesByCategory,
-      expensesByCity: expensesByCity,
-    );
-  } catch (e) {
-    _errorHandler.logSimpleError('خطأ في حساب الملخص الشهري: $e');
   }
-}
-
 
   /// تحميل المعاملات مع التخزين المؤقت
   Future<void> _loadTransactionsWithCache() async {
@@ -704,22 +710,4 @@ class TransactionProvider extends ChangeNotifier {
     performCleanup();
     super.dispose();
   }
-}
-
-// ========== نماذج البيانات المطلوبة ==========
-
-class MonthlySummary {
-  final double totalIncome;
-  final double totalExpenses;
-  final double totalCommitments;
-  final double remainingBalance;
-  final Map<String, double> expensesByCategory;
-
-  MonthlySummary({
-    required this.totalIncome,
-    required this.totalExpenses,
-    required this.totalCommitments,
-    required this.remainingBalance,
-    required this.expensesByCategory,
-  });
 }

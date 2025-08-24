@@ -1,6 +1,9 @@
+// services/error_handler_service.dart
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../models/app_error.dart'; // استخدام التعريف الموحد
 
 /// خدمة معالجة الأخطاء الشاملة
 class ErrorHandlerService {
@@ -26,12 +29,7 @@ class ErrorHandlerService {
 
     // معالجة أخطاء Dart غير المتوقعة
     PlatformDispatcher.instance.onError = (error, stack) {
-      _logError(AppError(
-        type: ErrorType.runtime,
-        message: error.toString(),
-        stackTrace: stack,
-        timestamp: DateTime.now(),
-      ));
+      _logError(AppError.runtime(error.toString(), stack));
       return true;
     };
   }
@@ -144,12 +142,7 @@ class ErrorHandlerService {
     try {
       return await operation();
     } catch (e) {
-      final error = AppError(
-        type: ErrorType.database,
-        message: e.toString(),
-        context: errorMessage,
-        timestamp: DateTime.now(),
-      );
+      final error = AppError.database(e.toString());
       
       logError(error);
       
@@ -171,12 +164,7 @@ class ErrorHandlerService {
     try {
       return await operation();
     } catch (e) {
-      final error = AppError(
-        type: ErrorType.network,
-        message: e.toString(),
-        context: errorMessage,
-        timestamp: DateTime.now(),
-      );
+      final error = AppError.network(e.toString());
       
       logError(error);
       
@@ -198,12 +186,7 @@ class ErrorHandlerService {
     try {
       return await operation();
     } catch (e) {
-      final error = AppError(
-        type: ErrorType.file,
-        message: e.toString(),
-        context: errorMessage,
-        timestamp: DateTime.now(),
-      );
+      final error = AppError.file(e.toString());
       
       logError(error);
       
@@ -302,79 +285,5 @@ class ErrorHandlerService {
   /// الحصول على أحدث الأخطاء
   List<AppError> getRecentErrors({int limit = 10}) {
     return _errorLog.reversed.take(limit).toList();
-  }
-}
-
-/// أنواع الأخطاء
-enum ErrorType {
-  general,
-  network,
-  database,
-  file,
-  validation,
-  runtime,
-}
-
-/// نموذج الخطأ
-class AppError {
-  final ErrorType type;
-  final String message;
-  final StackTrace? stackTrace;
-  final DateTime timestamp;
-  final String? context; // السياق الذي حدث فيه الخطأ
-
-  AppError({
-    required this.type,
-    required this.message,
-    this.stackTrace,
-    required this.timestamp,
-    this.context,
-  });
-
-  factory AppError.fromFlutterError(FlutterErrorDetails details) {
-    return AppError(
-      type: ErrorType.runtime,
-      message: details.exception.toString(),
-      stackTrace: details.stack,
-      timestamp: DateTime.now(),
-      context: details.context?.toString(),
-    );
-  }
-
-  factory AppError.validation(String message) {
-    return AppError(
-      type: ErrorType.validation,
-      message: message,
-      timestamp: DateTime.now(),
-    );
-  }
-
-  factory AppError.network(String message) {
-    return AppError(
-      type: ErrorType.network,
-      message: message,
-      timestamp: DateTime.now(),
-    );
-  }
-
-  factory AppError.database(String message) {
-    return AppError(
-      type: ErrorType.database,
-      message: message,
-      timestamp: DateTime.now(),
-    );
-  }
-
-  factory AppError.file(String message) {
-    return AppError(
-      type: ErrorType.file,
-      message: message,
-      timestamp: DateTime.now(),
-    );
-  }
-
-  @override
-  String toString() {
-    return 'AppError{type: $type, message: $message, timestamp: $timestamp}';
   }
 }

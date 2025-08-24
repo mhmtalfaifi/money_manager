@@ -361,6 +361,8 @@ class MonthlySummary {
     this.expensesByCity = const {},
   });
 
+  // الحسابات المشتقة
+  double get remainingBalance => totalIncome - totalExpenses - totalCommitments;
   double get netIncome => totalIncome - totalExpenses - totalCommitments;
   double get totalOutgoing => totalExpenses + totalCommitments;
   double get savingsRate => totalIncome > 0 ? (netIncome / totalIncome) * 100 : 0;
