@@ -17,6 +17,8 @@ dependencies:
   
   # قاعدة البيانات
   sqflite: ^2.4.2
+  sqflite_common_ffi: ^2.3.0  # إضافة جديدة للويندوز ولينكس وماك
+  sqlite3_flutter_libs: ^0.5.15  # مكتبات SQLite للمنصات المختلفة
   path: ^1.9.0
   
   # إدارة الحالة

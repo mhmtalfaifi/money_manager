@@ -12,7 +12,6 @@ import 'history_screen.dart';
 import 'reports_screen.dart';
 import 'settings_screen.dart';
 import 'dart:math' as math;
-// import '../utils/app_constants.dart'; // مؤقتاً حتى يتم إنشاء الملف
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -32,11 +31,12 @@ String _formatCurrency(double amount) {
   }
 }
 
-class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
+class _HomeScreenState extends State<HomeScreen> 
+    with SingleTickerProviderStateMixin, AutomaticKeepAliveClientMixin {
+  
   int _currentIndex = 0;
   late AnimationController _animationController;
   late Animation<double> _scaleAnimation;
-  bool _isInitialLoad = true;
   
   final List<Widget> _screens = [
     const DashboardScreen(),
@@ -46,44 +46,58 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   ];
 
   @override
+  bool get wantKeepAlive => true; // للحفاظ على حالة الشاشة
+
+  @override
   void initState() {
     super.initState();
+    _setupAnimations();
     
-    // إعداد التحكم في الرسوم المتحركة
+    // تحميل البيانات الأولية بعد بناء الويدجت
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadInitialDataSafely();
+    });
+  }
+
+  void _setupAnimations() {
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 200),
     );
     
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.95).animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut)
+    _scaleAnimation = Tween<double>(
+      begin: 1.0, 
+      end: 0.95
+    ).animate(
+      CurvedAnimation(
+        parent: _animationController, 
+        curve: Curves.easeInOut
+      )
     );
   }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    
-    // تحميل البيانات الأولية عندما يكون context جاهزاً
-    if (_isInitialLoad) {
-      _isInitialLoad = false;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _loadInitialData();
-      });
-    }
-  }
-
-  void _loadInitialData() {
-    final transactionProvider = context.read<TransactionProvider>();
-    final userProvider = context.read<UserProvider>();
-    
-    // تحميل البيانات إذا لم تكن محملة بالفعل
-    if (transactionProvider.transactions.isEmpty) {
-      transactionProvider.loadInitialData();
-    }
-    
-    if (userProvider.userName.isEmpty) {
-      userProvider.loadUserData();
+  Future<void> _loadInitialDataSafely() async {
+    try {
+      final transactionProvider = context.read<TransactionProvider>();
+      final userProvider = context.read<UserProvider>();
+      
+      // تحميل البيانات فقط إذا لم تكن محملة
+      final futures = <Future>[];
+      
+      if (transactionProvider.transactions.isEmpty) {
+        futures.add(transactionProvider.loadInitialData());
+      }
+      
+      if (userProvider.userName.isEmpty) {
+        futures.add(userProvider.loadUserData());
+      }
+      
+      if (futures.isNotEmpty) {
+        await Future.wait(futures);
+      }
+    } catch (e) {
+      debugPrint('خطأ في تحميل البيانات الأولية: $e');
+      // يمكن إضافة معالجة إضافية للخطأ هنا
     }
   }
 
@@ -94,9 +108,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   }
 
   void _onTabTapped(int index) {
-    // تأثير الاهتزاز عند النقر
-    HapticFeedback.lightImpact();
+    if (_currentIndex == index) return; // منع الضغط المتكرر
     
+    HapticFeedback.lightImpact();
     setState(() {
       _currentIndex = index;
     });
@@ -104,139 +118,128 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // مطلوب لـ AutomaticKeepAliveClientMixin
+    
     return Scaffold(
-      backgroundColor: _currentIndex == 0 ? AppColors.background : AppColors.background,
+      backgroundColor: AppColors.background,
       body: IndexedStack(
         index: _currentIndex,
         children: _screens,
       ),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.darkBrown.withOpacity(0.1),
-              blurRadius: 16,
-              offset: const Offset(0, -4),
-            ),
-          ],
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(24),
-            topRight: Radius.circular(24),
-          ),
-        ),
-        child: ClipRRect(
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(24),
-            topRight: Radius.circular(24),
-          ),
-          child: BottomNavigationBar(
-            currentIndex: _currentIndex,
-            onTap: _onTabTapped,
-            type: BottomNavigationBarType.fixed,
-            backgroundColor: Colors.white,
-            selectedItemColor: AppColors.primary,
-            unselectedItemColor: AppColors.textLight,
-            selectedFontSize: 12,
-            unselectedFontSize: 12,
-            elevation: 0,
-            showSelectedLabels: true,
-            showUnselectedLabels: true,
-            iconSize: 26,
-            items: [
-              BottomNavigationBarItem(
-                icon: Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: _currentIndex == 0 ? AppColors.primary.withOpacity(0.1) : Colors.transparent,
-                  ),
-                  child: const Icon(Icons.home_rounded),
-                ),
-                label: 'الرئيسية',
-              ),
-              BottomNavigationBarItem(
-                icon: Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: _currentIndex == 1 ? AppColors.primary.withOpacity(0.1) : Colors.transparent,
-                  ),
-                  child: const Icon(Icons.pie_chart_rounded),
-                ),
-                label: 'التقارير',
-              ),
-              BottomNavigationBarItem(
-                icon: Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: _currentIndex == 2 ? AppColors.primary.withOpacity(0.1) : Colors.transparent,
-                  ),
-                  child: const Icon(Icons.history_rounded),
-                ),
-                label: 'السجل',
-              ),
-              BottomNavigationBarItem(
-                icon: Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: _currentIndex == 3 ? AppColors.primary.withOpacity(0.1) : Colors.transparent,
-                  ),
-                  child: const Icon(Icons.settings_rounded),
-                ),
-                label: 'الإعدادات',
-              ),
-            ],
-          ),
-        ),
-      ),
-      floatingActionButton: _currentIndex == 0
-          ? ScaleTransition(
-              scale: _scaleAnimation,
-              child: GestureDetector(
-                onTapDown: (_) => _animationController.forward(),
-                onTapUp: (_) => _animationController.reverse(),
-                onTapCancel: () => _animationController.reverse(),
-                onTap: () {
-                  HapticFeedback.mediumImpact();
-                  _showAddTransaction(context);
-                },
-                child: Container(
-                  width: 70,
-                  height: 70,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: AppColors.addButton,
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.lightGreen.withOpacity(0.4),
-                        blurRadius: 20,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
-                  ),
-                  child: const Icon(Icons.add_rounded, 
-                    color: Colors.white, 
-                    size: 36,
-                  ),
-                ),
-              ),
-            )
+      bottomNavigationBar: _buildBottomNavigationBar(),
+      floatingActionButton: _currentIndex == 0 
+          ? _buildFloatingActionButton() 
           : null,
     );
   }
 
-  void _showAddTransaction(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => const AddTransactionSheet(),
-    ).then((_) {
+  Widget _buildBottomNavigationBar() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.darkBrown.withOpacity(0.1),
+            blurRadius: 16,
+            offset: const Offset(0, -4),
+          ),
+        ],
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(24),
+          topRight: Radius.circular(24),
+        ),
+      ),
+      child: ClipRRect(
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(24),
+          topRight: Radius.circular(24),
+        ),
+        child: BottomNavigationBar(
+          currentIndex: _currentIndex,
+          onTap: _onTabTapped,
+          type: BottomNavigationBarType.fixed,
+          backgroundColor: Colors.white,
+          selectedItemColor: AppColors.primary,
+          unselectedItemColor: AppColors.textLight,
+          selectedFontSize: 12,
+          unselectedFontSize: 12,
+          elevation: 0,
+          showSelectedLabels: true,
+          showUnselectedLabels: true,
+          iconSize: 26,
+          items: [
+            _buildNavItem(Icons.home_rounded, 'الرئيسية', 0),
+            _buildNavItem(Icons.pie_chart_rounded, 'التقارير', 1),
+            _buildNavItem(Icons.history_rounded, 'السجل', 2),
+            _buildNavItem(Icons.settings_rounded, 'الإعدادات', 3),
+          ],
+        ),
+      ),
+    );
+  }
+
+  BottomNavigationBarItem _buildNavItem(IconData icon, String label, int index) {
+    return BottomNavigationBarItem(
+      icon: Container(
+        padding: const EdgeInsets.all(6),
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: _currentIndex == index 
+              ? AppColors.primary.withOpacity(0.1) 
+              : Colors.transparent,
+        ),
+        child: Icon(icon),
+      ),
+      label: label,
+    );
+  }
+
+  Widget _buildFloatingActionButton() {
+    return ScaleTransition(
+      scale: _scaleAnimation,
+      child: GestureDetector(
+        onTapDown: (_) => _animationController.forward(),
+        onTapUp: (_) => _animationController.reverse(),
+        onTapCancel: () => _animationController.reverse(),
+        onTap: () {
+          HapticFeedback.mediumImpact();
+          _showAddTransaction();
+        },
+        child: Container(
+          width: 70,
+          height: 70,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: AppColors.addButton,
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.lightGreen.withOpacity(0.4),
+                blurRadius: 20,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: const Icon(
+            Icons.add_rounded, 
+            color: Colors.white, 
+            size: 36,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showAddTransaction() async {
+    try {
+      await showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (context) => const AddTransactionSheet(),
+      );
+    } finally {
       _animationController.reverse();
-    });
+    }
   }
 }
 
@@ -247,461 +250,560 @@ class DashboardScreen extends StatefulWidget {
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-// في home_screen.dart - إضافة هذه التحديثات
-
-class _DashboardScreenState extends State<DashboardScreen> {
-  bool _isInitialLoad = true;
+class _DashboardScreenState extends State<DashboardScreen> 
+    with AutomaticKeepAliveClientMixin {
   
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    
-    // تحميل البيانات مباشرة عند أول عرض
-    if (_isInitialLoad) {
-      _isInitialLoad = false;
-      _loadData();
-    }
-  }
-
-  Future<void> _loadData() async {
-    final transactionProvider = context.read<TransactionProvider>();
-    final userProvider = context.read<UserProvider>();
-    
-    // تحميل البيانات بشكل متزامن
-    await Future.wait([
-      transactionProvider.loadInitialData(),
-      userProvider.loadUserData(),
-    ]);
-    
-    // تحميل آخر العمليات فوراً من قاعدة البيانات
-    await transactionProvider.loadRecentTransactionsImmediately(limit: 5);
-    
-    // تحديث الواجهة
-    if (mounted) {
-      setState(() {});
-    }
-  }
+  bool get wantKeepAlive => true;
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
+    
     return SafeArea(
       child: RefreshIndicator(
-        onRefresh: _loadData,
+        onRefresh: _refreshData,
         color: AppColors.primary,
         child: Consumer2<TransactionProvider, UserProvider>(
-          builder: (context, provider, userProvider, child) {
-            if (provider.isLoading || userProvider.isLoading) {
-              return const Center(
-                child: CircularProgressIndicator(color: AppColors.primary),
-              );
+          builder: (context, transactionProvider, userProvider, child) {
+            
+            if (_shouldShowLoading(transactionProvider, userProvider)) {
+              return _buildLoadingState();
             }
 
-            final summary = provider.monthlySummary;
-            
-            // استخدم الدالة المحدثة لجلب آخر العمليات
-            final recentTransactions = provider.getRecentTransactions(limit: 3);
-            
-            // باقي الكود كما هو...
-            return SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // الترحيب والأيقونات
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Consumer<UserProvider>(
-                                builder: (context, userProvider, child) {
-                                  final name = userProvider.userName.isNotEmpty 
-                                      ? userProvider.userName 
-                                      : 'مستخدم';
-                                  return Text(
-                                    'مرحباً، $name',
-                                    style: TextStyle(
-                                      fontSize: 24,
-                                      fontWeight: FontWeight.bold,
-                                      color: AppColors.textPrimary,
-                                    ),
-                                  );
-                                },
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                DateFormat('MMMM yyyy', 'ar').format(provider.selectedMonth),
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: AppColors.textSecondary,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    
-                    const SizedBox(height: 32),
-                    
-                    // ترتيب جديد: الدخل في الأعلى
-                    _buildSummaryCard(
-                      title: 'الدخل',
-                      amount: summary?.totalIncome ?? 0,
-                      color: AppColors.incomeLight,
-                      icon: Icons.arrow_downward_rounded,
-                      iconColor: AppColors.income,
-                    ),
-                    
-                    const SizedBox(height: 12),
-                    
-                    // الالتزامات والمصروفات في صف واحد
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildCommitmentCard(
-                            title: 'الالتزامات',
-                            amount: summary?.totalCommitments ?? 0,
-                            percentage: summary != null && summary.totalIncome > 0
-                                ? (summary.totalCommitments / summary.totalIncome * 100)
-                                : 0,
-                            color: AppColors.commitmentLight,
-                            iconColor: AppColors.commitment,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _buildDailyExpenseCard(
-                            title: 'المصروفات',
-                            amount: summary?.totalExpenses ?? 0,
-                            color: AppColors.expenseLight,
-                            icon: Icons.show_chart_rounded,
-                            iconColor: AppColors.expense,
-                          ),
-                        ),
-                      ],
-                    ),
-                    
-                    const SizedBox(height: 32),
-                    
-                    // بطاقة التبرع عبر إحسان مع الشعار الصحيح
-                    InkWell(
-                      onTap: () => _openEhsanPlatform(context),
-                      borderRadius: BorderRadius.circular(20),
-                      splashColor: const Color(0xFF013F6D).withOpacity(0.2),
-                      highlightColor: const Color(0xFF013F6D).withOpacity(0.1),
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(20),
-                          gradient: const LinearGradient(
-                            colors: [
-                              Color(0xFF013F6D),
-                              Color(0xFF188F7A),
-                            ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFF013F6D).withOpacity(0.3),
-                              blurRadius: 15,
-                              offset: const Offset(0, 6),
-                            ),
-                          ],
-                        ),
-                        child: Row(
-                          children: [
-                            // شعار إحسان - استخدام أيقونة بديلة إذا لم يكن SVG متوفراً
-                            Container(
-                              width: 60,
-                              height: 60,
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: const Icon(
-                                Icons.volunteer_activism,
-                                size: 30,
-                                color: Color(0xFF013F6D),
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            const Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'ساهم في الخير',
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                  SizedBox(height: 4),
-                                  Text(
-                                    'تبرع عبر منصة إحسان',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: Colors.white70,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Icon(
-                              Icons.arrow_forward_ios_rounded,
-                              color: Colors.white.withOpacity(0.8),
-                              size: 20,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    
-                    const SizedBox(height: 32),
-                    
-                    // الميزانية الشهرية
-                    Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
-                            blurRadius: 10,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 48,
-                            height: 48,
-                            decoration: BoxDecoration(
-                              color: AppColors.primary.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Icon(
-                              Icons.account_balance_wallet_rounded,
-                              color: AppColors.primary,
-                              size: 24,
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          const Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'الميزانية الشهرية',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: AppColors.textSecondary,
-                                  ),
-                                ),
-                                Text(
-                                  'المتبقي من الدخل',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: AppColors.textLight,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Text(
-                            _formatCurrency(summary?.remainingBalance ?? 0),
-                            style: TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.textPrimary,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'ريال',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          // Circle Progress
-                          SizedBox(
-                            width: 80,
-                            height: 80,
-                            child: Stack(
-                              children: [
-                                CustomPaint(
-                                  size: const Size(80, 80),
-                                  painter: CircleProgressPainter(
-                                    progress: summary != null && summary.totalIncome > 0
-                                        ? ((summary.totalIncome - summary.totalExpenses - summary.totalCommitments) / summary.totalIncome).clamp(0.0, 1.0)
-                                        : 0,
-                                    backgroundColor: AppColors.progressGray,
-                                    progressColor: AppColors.progressGreen,
-                                  ),
-                                ),
-                                Positioned.fill(
-                                  child: Center(
-                                    child: Text(
-                                      summary != null && summary.totalIncome > 0
-                                          ? '${(((summary.totalIncome - summary.totalExpenses - summary.totalCommitments) / summary.totalIncome) * 100).clamp(0, 100).toStringAsFixed(0)}%'
-                                          : '0%',
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.bold,
-                                        color: AppColors.progressGreen,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    
-                    const SizedBox(height: 32),
-                    
-                    // آخر العمليات - العنوان
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'آخر العمليات',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                        if (recentTransactions.isNotEmpty)
-                          TextButton(
-                            onPressed: () {
-                              // الانتقال مع الاحتفاظ بـ BottomNavigationBar
-                              final homeState = context.findAncestorStateOfType<_HomeScreenState>();
-                              homeState?._onTabTapped(2); // الانتقال إلى شاشة السجل
-                            },
-                            child: Text(
-                              'عرض الكل',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: AppColors.primary,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                    
-                    const SizedBox(height: 16),
-                    
-                    // قائمة آخر العمليات - المحدثة
-                    if (recentTransactions.isEmpty)
-                      Container(
-                        padding: const EdgeInsets.all(40),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(20),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.05),
-                              blurRadius: 10,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: Center(
-                          child: Column(
-                            children: [
-                              Icon(
-                                Icons.receipt_long_rounded,
-                                size: 48,
-                                color: AppColors.textLight,
-                              ),
-                              const SizedBox(height: 12),
-                              Text(
-                                'لا توجد عمليات حتى الآن',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: AppColors.textSecondary,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'ابدأ بإضافة أول عملية',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: AppColors.textLight,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      )
-                    else
-                      // عرض آخر العمليات مع التحديث التلقائي
-                      ...recentTransactions.map((transaction) => TransactionItem(
-                        key: ValueKey('transaction_${transaction.id}_${transaction.createdAt.millisecondsSinceEpoch}'), // مفتاح فريد للتحديث
-                        transaction: transaction,
-                        onTap: () => _showTransactionDetails(context, transaction),
-                      )),
-                      
-                    const SizedBox(height: 100), // مساحة للزر العائم
-                  ],
-                ),
-              ),
-            );
+            if (_hasError(transactionProvider, userProvider)) {
+              return _buildErrorState(transactionProvider, userProvider);
+            }
+
+            return _buildMainContent(transactionProvider, userProvider);
           },
         ),
       ),
     );
   }
 
-  // باقي الدوال كما هي...
-  void _showTransactionDetails(BuildContext context, TransactionModel transaction) {
-    // عرض تفاصيل العملية
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('تفاصيل العملية'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('الوصف: ${transaction.description}'),
-            Text('المبلغ: ${_formatCurrency(transaction.amount)}'),
-            Text('الفئة: ${transaction.category}'),
-            Text('المدينة: ${transaction.city}'),
-            Text('التاريخ: ${DateFormat('yyyy/MM/dd').format(transaction.date)}'),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('إغلاق'),
+  bool _shouldShowLoading(TransactionProvider transactionProvider, UserProvider userProvider) {
+    return transactionProvider.isLoading && transactionProvider.transactions.isEmpty;
+  }
+
+  bool _hasError(TransactionProvider transactionProvider, UserProvider userProvider) {
+    return transactionProvider.error != null && transactionProvider.transactions.isEmpty;
+  }
+
+  Widget _buildLoadingState() {
+    return const Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          CircularProgressIndicator(color: AppColors.primary),
+          SizedBox(height: 16),
+          Text(
+            'جاري تحميل البيانات...',
+            style: TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 16,
+            ),
           ),
         ],
       ),
     );
   }
 
-  // دالة لفتح منصة إحسان
-  Future<void> _openEhsanPlatform(BuildContext context) async {
-    String url;
+  Widget _buildErrorState(TransactionProvider transactionProvider, UserProvider userProvider) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.error_outline_rounded,
+            size: 64,
+            color: AppColors.error,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'حدث خطأ في تحميل البيانات',
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            transactionProvider.error ?? 'خطأ غير محدد',
+            style: TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 14,
+            ),
+          ),
+          const SizedBox(height: 24),
+          ElevatedButton.icon(
+            onPressed: _refreshData,
+            icon: const Icon(Icons.refresh_rounded),
+            label: const Text('إعادة المحاولة'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMainContent(TransactionProvider transactionProvider, UserProvider userProvider) {
+    final summary = transactionProvider.monthlySummary;
+    final recentTransactions = transactionProvider.getRecentTransactions(limit: 3);
     
+    return SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildHeader(userProvider, transactionProvider),
+            const SizedBox(height: 32),
+            _buildSummaryCards(summary),
+            const SizedBox(height: 32),
+            _buildEhsanCard(),
+            const SizedBox(height: 32),
+            _buildMonthlyBalance(summary),
+            const SizedBox(height: 32),
+            _buildRecentTransactionsSection(recentTransactions),
+            const SizedBox(height: 100), // مساحة للزر العائم
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeader(UserProvider userProvider, TransactionProvider transactionProvider) {
+    return Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 300),
+                child: Text(
+                  'مرحباً، ${userProvider.userName.isNotEmpty ? userProvider.userName : 'مستخدم'}',
+                  key: ValueKey(userProvider.userName),
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                DateFormat('MMMM yyyy', 'ar').format(transactionProvider.selectedMonth),
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSummaryCards(MonthlySummary? summary) {
+    return Column(
+      children: [
+        // الدخل
+        _buildSummaryCard(
+          title: 'الدخل',
+          amount: summary?.totalIncome ?? 0,
+          color: AppColors.incomeLight,
+          icon: Icons.arrow_downward_rounded,
+          iconColor: AppColors.income,
+        ),
+        
+        const SizedBox(height: 12),
+        
+        // الالتزامات والمصروفات
+        Row(
+          children: [
+            Expanded(
+              child: _buildCommitmentCard(
+                title: 'الالتزامات',
+                amount: summary?.totalCommitments ?? 0,
+                percentage: summary != null && summary.totalIncome > 0
+                    ? (summary.totalCommitments / summary.totalIncome * 100)
+                    : 0,
+                color: AppColors.commitmentLight,
+                iconColor: AppColors.commitment,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildExpenseCard(
+                title: 'المصروفات',
+                amount: summary?.totalExpenses ?? 0,
+                color: AppColors.expenseLight,
+                icon: Icons.show_chart_rounded,
+                iconColor: AppColors.expense,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEhsanCard() {
+    return InkWell(
+      onTap: () => _openEhsanPlatform(context),
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          gradient: const LinearGradient(
+            colors: [
+              Color(0xFF013F6D),
+              Color(0xFF188F7A),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF013F6D).withOpacity(0.3),
+              blurRadius: 15,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 60,
+              height: 60,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(
+                Icons.volunteer_activism,
+                size: 30,
+                color: Color(0xFF013F6D),
+              ),
+            ),
+            const SizedBox(width: 16),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'ساهم في الخير',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    'تبرع عبر منصة إحسان',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.white70,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.arrow_forward_ios_rounded,
+              color: Colors.white.withOpacity(0.8),
+              size: 20,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMonthlyBalance(MonthlySummary? summary) {
+    final balance = summary?.remainingBalance ?? 0;
+    final progress = summary != null && summary.totalIncome > 0
+        ? (balance / summary.totalIncome).clamp(0.0, 1.0)
+        : 0.0;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(
+              Icons.account_balance_wallet_rounded,
+              color: AppColors.primary,
+              size: 24,
+            ),
+          ),
+          const SizedBox(width: 16),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'الميزانية الشهرية',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                Text(
+                  'المتبقي من الدخل',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textLight,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                _formatCurrency(balance),
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const Text(
+                'ريال',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(width: 16),
+          // دائرة التقدم
+          SizedBox(
+            width: 80,
+            height: 80,
+            child: Stack(
+              children: [
+                CustomPaint(
+                  size: const Size(80, 80),
+                  painter: CircleProgressPainter(
+                    progress: progress,
+                    backgroundColor: AppColors.progressGray,
+                    progressColor: AppColors.progressGreen,
+                  ),
+                ),
+                Positioned.fill(
+                  child: Center(
+                    child: Text(
+                      '${(progress * 100).toStringAsFixed(0)}%',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.progressGreen,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRecentTransactionsSection(List<TransactionModel> recentTransactions) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'آخر العمليات',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            if (recentTransactions.isNotEmpty)
+              TextButton(
+                onPressed: _navigateToHistory,
+                child: const Text(
+                  'عرض الكل',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        
+        if (recentTransactions.isEmpty)
+          _buildEmptyTransactionsState()
+        else
+          ...recentTransactions.map((transaction) => 
+            TransactionItem(
+              key: ValueKey('transaction_${transaction.id}_${transaction.createdAt.millisecondsSinceEpoch}'),
+              transaction: transaction,
+              onTap: () => _showTransactionDetails(transaction),
+              margin: const EdgeInsets.only(bottom: 12),
+            )
+          ),
+      ],
+    );
+  }
+
+  Widget _buildEmptyTransactionsState() {
+    return Container(
+      padding: const EdgeInsets.all(40),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: const Center(
+        child: Column(
+          children: [
+            Icon(
+              Icons.receipt_long_rounded,
+              size: 48,
+              color: AppColors.textLight,
+            ),
+            SizedBox(height: 12),
+            Text(
+              'لا توجد عمليات حتى الآن',
+              style: TextStyle(
+                fontSize: 16,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            SizedBox(height: 4),
+            Text(
+              'ابدأ بإضافة أول عملية',
+              style: TextStyle(
+                fontSize: 14,
+                color: AppColors.textLight,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // دوال مساعدة
+  Future<void> _refreshData() async {
     try {
+      final transactionProvider = context.read<TransactionProvider>();
+      final userProvider = context.read<UserProvider>();
+      
+      await Future.wait([
+        transactionProvider.loadInitialData(),
+        userProvider.loadUserData(),
+      ]);
+      
+      await transactionProvider.loadRecentTransactionsImmediately(limit: 5);
+    } catch (e) {
+      debugPrint('خطأ في تحديث البيانات: $e');
+    }
+  }
+
+  void _navigateToHistory() {
+    final homeState = context.findAncestorStateOfType<_HomeScreenState>();
+    homeState?._onTabTapped(2);
+  }
+
+  void _showTransactionDetails(TransactionModel transaction) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('تفاصيل العملية'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildDetailRow('الوصف', transaction.description),
+            _buildDetailRow('المبلغ', _formatCurrency(transaction.amount)),
+            _buildDetailRow('الفئة', transaction.category),
+            _buildDetailRow('المدينة', transaction.city),
+            _buildDetailRow('التاريخ', DateFormat('yyyy/MM/dd').format(transaction.date)),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('إغلاق'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '$label: ',
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
+          Expanded(child: Text(value)),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _openEhsanPlatform(BuildContext context) async {
+    try {
+      String url;
+      
       if (Theme.of(context).platform == TargetPlatform.android) {
         url = 'https://play.google.com/store/apps/details?id=sa.gov.sdaia.ehsan';
       } else if (Theme.of(context).platform == TargetPlatform.iOS) {
@@ -714,21 +816,34 @@ class _DashboardScreenState extends State<DashboardScreen> {
         await launchUrl(Uri.parse(url));
       } else {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('لا يمكن فتح منصة إحسان')),
-          );
+          _showErrorSnackBar('لا يمكن فتح منصة إحسان');
         }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('حدث خطأ أثناء فتح المنصة')),
-        );
+        _showErrorSnackBar('حدث خطأ أثناء فتح المنصة');
       }
     }
   }
 
-  // باقي دوال البناء...
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.error_outline, color: Colors.white, size: 20),
+            const SizedBox(width: 12),
+            Text(message),
+          ],
+        ),
+        backgroundColor: AppColors.error,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
+
+  // دوال بناء الكروت
   Widget _buildSummaryCard({
     required String title,
     required double amount,
@@ -767,7 +882,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               children: [
                 Text(
                   title,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 13,
                     color: AppColors.textSecondary,
                   ),
@@ -775,7 +890,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 const SizedBox(height: 4),
                 Text(
                   _formatCurrency(amount),
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
                     color: AppColors.textPrimary,
@@ -833,7 +948,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   children: [
                     Text(
                       title,
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 12,
                         color: AppColors.textSecondary,
                       ),
@@ -841,7 +956,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     const SizedBox(height: 2),
                     Text(
                       _formatCurrency(amount),
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                         color: AppColors.textPrimary,
@@ -876,7 +991,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildDailyExpenseCard({
+  Widget _buildExpenseCard({
     required String title,
     required double amount,
     required Color color,
@@ -916,7 +1031,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   children: [
                     Text(
                       title,
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 12,
                         color: AppColors.textSecondary,
                       ),
@@ -924,7 +1039,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     const SizedBox(height: 2),
                     Text(
                       _formatCurrency(amount),
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                         color: AppColors.textPrimary,
@@ -940,7 +1055,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 }
-// Custom Painter for Circle Progress
+
+// Custom Painter للدائرة التقدمية
 class CircleProgressPainter extends CustomPainter {
   final double progress;
   final Color backgroundColor;
@@ -957,7 +1073,7 @@ class CircleProgressPainter extends CustomPainter {
     final center = Offset(size.width / 2, size.height / 2);
     final radius = size.width / 2;
     
-    // Background Circle
+    // دائرة الخلفية
     final backgroundPaint = Paint()
       ..color = backgroundColor
       ..style = PaintingStyle.stroke
@@ -966,26 +1082,30 @@ class CircleProgressPainter extends CustomPainter {
     
     canvas.drawCircle(center, radius - 4, backgroundPaint);
     
-    // Progress Arc
-    final progressPaint = Paint()
-      ..color = progressColor
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 8
-      ..strokeCap = StrokeCap.round;
-    
-    final progressAngle = 2 * math.pi * progress;
-    canvas.drawArc(
-      Rect.fromCircle(center: center, radius: radius - 4),
-      -math.pi / 2,
-      progressAngle,
-      false,
-      progressPaint,
-    );
+    // قوس التقدم
+    if (progress > 0) {
+      final progressPaint = Paint()
+        ..color = progressColor
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 8
+        ..strokeCap = StrokeCap.round;
+      
+      final progressAngle = 2 * math.pi * progress;
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius - 4),
+        -math.pi / 2,
+        progressAngle,
+        false,
+        progressPaint,
+      );
+    }
   }
   
   @override
   bool shouldRepaint(CircleProgressPainter oldDelegate) {
-    return oldDelegate.progress != progress;
+    return oldDelegate.progress != progress ||
+           oldDelegate.backgroundColor != backgroundColor ||
+           oldDelegate.progressColor != progressColor;
   }
 }
 
@@ -993,43 +1113,21 @@ class CircleProgressPainter extends CustomPainter {
 class TransactionItem extends StatelessWidget {
   final TransactionModel transaction;
   final VoidCallback? onTap;
+  final EdgeInsets? margin;
 
   const TransactionItem({
     super.key,
     required this.transaction,
     this.onTap,
+    this.margin,
   });
 
   @override
   Widget build(BuildContext context) {
-    IconData icon;
-    Color iconColor;
-    Color backgroundColor;
-
-    switch (transaction.type) {
-      case 'income':
-        icon = Icons.arrow_downward_rounded;
-        iconColor = AppColors.income;
-        backgroundColor = AppColors.incomeLight;
-        break;
-      case 'expense':
-        icon = Icons.arrow_upward_rounded;
-        iconColor = AppColors.expense;
-        backgroundColor = AppColors.expenseLight;
-        break;
-      case 'commitment':
-        icon = Icons.event_repeat_rounded;
-        iconColor = AppColors.commitment;
-        backgroundColor = AppColors.commitmentLight;
-        break;
-      default:
-        icon = Icons.help_outline;
-        iconColor = Colors.grey;
-        backgroundColor = Colors.grey.withOpacity(0.1);
-    }
+    final typeConfig = _getTransactionConfig(transaction.type);
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: margin ?? const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -1044,7 +1142,10 @@ class TransactionItem extends StatelessWidget {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: onTap,
+          onTap: onTap != null ? () {
+            HapticFeedback.lightImpact();
+            onTap!();
+          } : null,
           borderRadius: BorderRadius.circular(16),
           child: Padding(
             padding: const EdgeInsets.all(16),
@@ -1054,12 +1155,12 @@ class TransactionItem extends StatelessWidget {
                   width: 48,
                   height: 48,
                   decoration: BoxDecoration(
-                    color: backgroundColor,
+                    color: typeConfig.backgroundColor,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
-                    icon,
-                    color: iconColor,
+                    typeConfig.icon,
+                    color: typeConfig.iconColor,
                     size: 24,
                   ),
                 ),
@@ -1070,7 +1171,7 @@ class TransactionItem extends StatelessWidget {
                     children: [
                       Text(
                         transaction.description,
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
                           color: AppColors.textPrimary,
@@ -1083,7 +1184,7 @@ class TransactionItem extends StatelessWidget {
                         children: [
                           Text(
                             transaction.category,
-                            style: TextStyle(
+                            style: const TextStyle(
                               fontSize: 12,
                               color: AppColors.textSecondary,
                             ),
@@ -1092,17 +1193,21 @@ class TransactionItem extends StatelessWidget {
                           Container(
                             width: 4,
                             height: 4,
-                            decoration: BoxDecoration(
+                            decoration: const BoxDecoration(
                               color: AppColors.textLight,
                               shape: BoxShape.circle,
                             ),
                           ),
                           const SizedBox(width: 8),
-                          Text(
-                            transaction.city,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: AppColors.textSecondary,
+                          Expanded(
+                            child: Text(
+                              transaction.city,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textSecondary,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],
@@ -1127,7 +1232,7 @@ class TransactionItem extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       DateFormat('MMM dd', 'ar').format(transaction.date),
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 12,
                         color: AppColors.textLight,
                       ),
@@ -1141,4 +1246,45 @@ class TransactionItem extends StatelessWidget {
       ),
     );
   }
+
+  _TransactionConfig _getTransactionConfig(String type) {
+    switch (type) {
+      case 'income':
+        return _TransactionConfig(
+          icon: Icons.arrow_downward_rounded,
+          iconColor: AppColors.income,
+          backgroundColor: AppColors.incomeLight,
+        );
+      case 'expense':
+        return _TransactionConfig(
+          icon: Icons.arrow_upward_rounded,
+          iconColor: AppColors.expense,
+          backgroundColor: AppColors.expenseLight,
+        );
+      case 'commitment':
+        return _TransactionConfig(
+          icon: Icons.event_repeat_rounded,
+          iconColor: AppColors.commitment,
+          backgroundColor: AppColors.commitmentLight,
+        );
+      default:
+        return _TransactionConfig(
+          icon: Icons.help_outline,
+          iconColor: Colors.grey,
+          backgroundColor: Colors.grey.withOpacity(0.1),
+        );
+    }
+  }
+}
+
+class _TransactionConfig {
+  final IconData icon;
+  final Color iconColor;
+  final Color backgroundColor;
+
+  _TransactionConfig({
+    required this.icon,
+    required this.iconColor,
+    required this.backgroundColor,
+  });
 }

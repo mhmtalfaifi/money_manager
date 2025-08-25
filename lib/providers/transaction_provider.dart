@@ -584,8 +584,16 @@ class TransactionProvider extends ChangeNotifier {
         final id = await _db.insertCategory(category);
         
         if (id > 0) {
+          // إضافة الفئة الجديدة للقائمة المحلية فوراً
+          final newCategory = category.copyWith(id: id);
+          _categories.add(newCategory);
+          
+          // تحديث الكاش
           _cache.invalidateRelatedCache('categories');
-          await _loadCategoriesWithCache();
+          
+          // إشعار فوري بالتحديث
+          notifyListeners();
+          
           return true;
         }
         return false;
@@ -595,7 +603,6 @@ class TransactionProvider extends ChangeNotifier {
       context: context,
     ) ?? false;
   }
-
   /// إضافة مدينة جديدة
   Future<bool> addCity(String name, {BuildContext? context}) async {
     return await _performOperation<bool>(
