@@ -206,6 +206,10 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       primarySwatch: Colors.green,
       fontFamily: 'Amiri',
       scaffoldBackgroundColor: const Color(0xFFF5F2E9),
+      // إجبار استخدام الأرقام الإنجليزية
+      textTheme: const TextTheme().apply(
+        fontFamily: 'Amiri',
+      ),
       appBarTheme: const AppBarTheme(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -219,7 +223,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       ),
     );
   }
-}
+  }
 /// غلاف التطبيق الذي يقرر أي شاشة يعرض
 class AppWrapper extends StatefulWidget {
   const AppWrapper({super.key});

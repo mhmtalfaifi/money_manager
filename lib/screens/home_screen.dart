@@ -247,6 +247,8 @@ class DashboardScreen extends StatefulWidget {
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
+// في home_screen.dart - إضافة هذه التحديثات
+
 class _DashboardScreenState extends State<DashboardScreen> {
   bool _isInitialLoad = true;
   
@@ -271,40 +273,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
       userProvider.loadUserData(),
     ]);
     
+    // تحميل آخر العمليات فوراً من قاعدة البيانات
+    await transactionProvider.loadRecentTransactionsImmediately(limit: 5);
+    
     // تحديث الواجهة
     if (mounted) {
       setState(() {});
-    }
-  }
-
-  // دالة لفتح منصة إحسان
-  Future<void> _openEhsanPlatform(BuildContext context) async {
-    String url;
-    
-    try {
-      if (Theme.of(context).platform == TargetPlatform.android) {
-        url = 'https://play.google.com/store/apps/details?id=sa.gov.sdaia.ehsan';
-      } else if (Theme.of(context).platform == TargetPlatform.iOS) {
-        url = 'https://apps.apple.com/us/app/ehsan-إحسان/id1602515092';
-      } else {
-        url = 'https://ehsan.sa/';
-      }
-      
-      if (await canLaunchUrl(Uri.parse(url))) {
-        await launchUrl(Uri.parse(url));
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('لا يمكن فتح منصة إحسان')),
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('حدث خطأ أثناء فتح المنصة')),
-        );
-      }
     }
   }
 
@@ -323,18 +297,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
             }
 
             final summary = provider.monthlySummary;
+            
+            // استخدم الدالة المحدثة لجلب آخر العمليات
             final recentTransactions = provider.getRecentTransactions(limit: 3);
             
-            // حساب النسبة المئوية للالتزامات
-            final double commitmentPercentage = summary != null && summary.totalIncome > 0
-                ? (summary.totalCommitments / summary.totalIncome * 100)
-                : 0;
-            
-            // حساب النسبة للدائرة (المتبقي من الدخل)
-            final double remainingPercentage = summary != null && summary.totalIncome > 0
-                ? ((summary.totalIncome - summary.totalExpenses - summary.totalCommitments) / summary.totalIncome).clamp(0.0, 1.0)
-                : 0;
-
+            // باقي الكود كما هو...
             return SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
               child: Padding(
@@ -398,7 +365,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           child: _buildCommitmentCard(
                             title: 'الالتزامات',
                             amount: summary?.totalCommitments ?? 0,
-                            percentage: commitmentPercentage,
+                            percentage: summary != null && summary.totalIncome > 0
+                                ? (summary.totalCommitments / summary.totalIncome * 100)
+                                : 0,
                             color: AppColors.commitmentLight,
                             iconColor: AppColors.commitment,
                           ),
@@ -574,7 +543,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 CustomPaint(
                                   size: const Size(80, 80),
                                   painter: CircleProgressPainter(
-                                    progress: remainingPercentage,
+                                    progress: summary != null && summary.totalIncome > 0
+                                        ? ((summary.totalIncome - summary.totalExpenses - summary.totalCommitments) / summary.totalIncome).clamp(0.0, 1.0)
+                                        : 0,
                                     backgroundColor: AppColors.progressGray,
                                     progressColor: AppColors.progressGreen,
                                   ),
@@ -582,7 +553,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 Positioned.fill(
                                   child: Center(
                                     child: Text(
-                                      '${(remainingPercentage * 100).toStringAsFixed(0)}%',
+                                      summary != null && summary.totalIncome > 0
+                                          ? '${(((summary.totalIncome - summary.totalExpenses - summary.totalCommitments) / summary.totalIncome) * 100).clamp(0, 100).toStringAsFixed(0)}%'
+                                          : '0%',
                                       style: TextStyle(
                                         fontSize: 14,
                                         fontWeight: FontWeight.bold,
@@ -600,7 +573,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     
                     const SizedBox(height: 32),
                     
-                    // آخر العمليات
+                    // آخر العمليات - العنوان
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -633,7 +606,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     
                     const SizedBox(height: 16),
                     
-                    // قائمة آخر العمليات
+                    // قائمة آخر العمليات - المحدثة
                     if (recentTransactions.isEmpty)
                       Container(
                         padding: const EdgeInsets.all(40),
@@ -677,7 +650,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ),
                       )
                     else
+                      // عرض آخر العمليات مع التحديث التلقائي
                       ...recentTransactions.map((transaction) => TransactionItem(
+                        key: ValueKey('transaction_${transaction.id}_${transaction.createdAt.millisecondsSinceEpoch}'), // مفتاح فريد للتحديث
                         transaction: transaction,
                         onTap: () => _showTransactionDetails(context, transaction),
                       )),
@@ -692,7 +667,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ),
     );
   }
-  
+
+  // باقي الدوال كما هي...
   void _showTransactionDetails(BuildContext context, TransactionModel transaction) {
     // عرض تفاصيل العملية
     showDialog(
@@ -721,6 +697,38 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  // دالة لفتح منصة إحسان
+  Future<void> _openEhsanPlatform(BuildContext context) async {
+    String url;
+    
+    try {
+      if (Theme.of(context).platform == TargetPlatform.android) {
+        url = 'https://play.google.com/store/apps/details?id=sa.gov.sdaia.ehsan';
+      } else if (Theme.of(context).platform == TargetPlatform.iOS) {
+        url = 'https://apps.apple.com/us/app/ehsan-إحسان/id1602515092';
+      } else {
+        url = 'https://ehsan.sa/';
+      }
+      
+      if (await canLaunchUrl(Uri.parse(url))) {
+        await launchUrl(Uri.parse(url));
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('لا يمكن فتح منصة إحسان')),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('حدث خطأ أثناء فتح المنصة')),
+        );
+      }
+    }
+  }
+
+  // باقي دوال البناء...
   Widget _buildSummaryCard({
     required String title,
     required double amount,
@@ -932,7 +940,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 }
-
 // Custom Painter for Circle Progress
 class CircleProgressPainter extends CustomPainter {
   final double progress;

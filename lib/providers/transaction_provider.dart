@@ -1,8 +1,8 @@
-// providers/transaction_provider.dart
+// providers/transaction_provider.dart - الإصلاحات الجذرية
 
 import 'package:flutter/material.dart';
 import '../models/transaction_model.dart';
-import '../models/app_error.dart'; // استخدام التعريف الموحد
+import '../models/app_error.dart';
 import '../helpers/database_helper.dart';
 import '../services/error_handler_service.dart';
 import '../services/cache_service.dart';
@@ -16,24 +16,15 @@ class TransactionProvider extends ChangeNotifier {
   final MemoryManagerService _memoryManager = MemoryManagerService();
   final DatabaseHelper _databaseHelper = DatabaseHelper.instance;
 
-  // أضف هذه الطرق
-  Future<void> _loadTransactions() async {
-    await _loadTransactionsWithCache();
-  }
-
-  Future<void> _loadBudgets() async {
-    await _loadBudgetsWithCache();
-  }
-
-  Future<void> _loadCategories() async {
-    await _loadCategoriesWithCache();
-  }
-
   // البيانات
   List<TransactionModel> _transactions = [];
   List<CategoryModel> _categories = [];
   List<CityModel> _cities = [];
   List<BudgetModel> _budgets = [];
+  
+  // إضافة متغير خاص لآخر العمليات مع التحديث الفوري
+  List<TransactionModel> _recentTransactions = [];
+  bool _recentTransactionsNeedsUpdate = true;
   
   // الحالة
   DateTime _selectedMonth = DateTime.now();
@@ -55,15 +46,180 @@ class TransactionProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
 
-  // ========== التهيئة والتحميل ==========
+  // ========== تحديث دالة آخر العمليات ==========
+
+  /// الحصول على آخر العمليات مع التحديث الفوري
+  List<TransactionModel> getRecentTransactions({int limit = 5}) {
+    // إذا كان يحتاج تحديث أو الليست فارغة، قم بتحديثها
+    if (_recentTransactionsNeedsUpdate || _recentTransactions.isEmpty) {
+      _updateRecentTransactionsCache(limit);
+    }
+    
+    // إرجاع العدد المطلوب
+    return _recentTransactions.take(limit).toList();
+  }
+
+  /// تحديث كاش آخر العمليات
+  void _updateRecentTransactionsCache(int limit) {
+    try {
+      // جلب كل المعاملات وترتيبها حسب تاريخ الإنشاء (الأحدث أولاً)
+      final allTransactions = List<TransactionModel>.from(_transactions);
+      allTransactions.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      
+      // أخذ العدد المطلوب
+      _recentTransactions = allTransactions.take(limit + 10).toList(); // أخذ عدد أكثر للاحتياط
+      _recentTransactionsNeedsUpdate = false;
+      
+      // تحديث الكاش العادي أيضاً
+      final cacheKey = 'recent_$limit';
+      _cache.set(cacheKey, _recentTransactions.take(limit).toList(), 
+                ttl: const Duration(minutes: 1));
+                
+    } catch (e) {
+      _errorHandler.logSimpleError('خطأ في تحديث آخر العمليات: $e');
+    }
+  }
+
+  /// إجبار تحديث آخر العمليات
+  void _forceUpdateRecentTransactions() {
+    _recentTransactionsNeedsUpdate = true;
+    _updateRecentTransactionsCache(10); // تحديث مع رقم كبير للاحتياط
+  }
+
+  // ========== تحديث دالة إضافة المعاملة ==========
+
+  /// إضافة معاملة جديدة مع التحديث الفوري
+  Future<bool> addTransaction(TransactionModel transaction, {BuildContext? context}) async {
+    return await _performOperation<bool>(
+      operation: () async {
+        // التحقق من صحة البيانات
+        _validateTransaction(transaction);
+        
+        // إدراج في قاعدة البيانات
+        final id = await _db.insertTransaction(transaction);
+        
+        if (id > 0) {
+          // إنشاء المعاملة الجديدة مع الـ id
+          final newTransaction = transaction.copyWith(id: id);
+          
+          // تحديث القائمة المحلية فوراً
+          _transactions.insert(0, newTransaction); // إدراج في المقدمة
+          
+          // إجبار تحديث آخر العمليات
+          _forceUpdateRecentTransactions();
+          
+          // تحديث الكاش
+          _invalidateAllRelatedCache();
+          
+          // إعادة حساب الملخص
+          await calculateMonthlySummary();
+          
+          // إشعار الواجهة بالتحديث فوراً
+          notifyListeners();
+          
+          // التحقق من تجاوز الميزانية (في الخلفية)
+          if (transaction.type == 'expense') {
+            _checkBudgetAlert(transaction.category, context);
+          }
+          
+          return true;
+        }
+        return false;
+      },
+      loadingMessage: 'جاري إضافة المعاملة...',
+      successMessage: 'تم إضافة المعاملة بنجاح',
+      context: context,
+    ) ?? false;
+  }
+
+  /// تحديث معاملة مع التحديث الفوري
+  Future<bool> updateTransaction(TransactionModel transaction, {BuildContext? context}) async {
+    return await _performOperation<bool>(
+      operation: () async {
+        _validateTransaction(transaction);
+        
+        final rowsAffected = await _db.updateTransaction(transaction);
+        
+        if (rowsAffected > 0) {
+          // تحديث القائمة المحلية
+          final index = _transactions.indexWhere((t) => t.id == transaction.id);
+          if (index != -1) {
+            _transactions[index] = transaction;
+          }
+          
+          // إجبار تحديث آخر العمليات
+          _forceUpdateRecentTransactions();
+          
+          // تحديث الكاش
+          _invalidateAllRelatedCache();
+          
+          // إعادة حساب الملخص
+          await calculateMonthlySummary();
+          
+          // إشعار فوري
+          notifyListeners();
+          
+          return true;
+        }
+        return false;
+      },
+      loadingMessage: 'جاري تحديث المعاملة...',
+      successMessage: 'تم تحديث المعاملة بنجاح',
+      context: context,
+    ) ?? false;
+  }
+
+  /// حذف معاملة مع التحديث الفوري
+  Future<bool> deleteTransaction(int id, {BuildContext? context}) async {
+    return await _performOperation<bool>(
+      operation: () async {
+        final rowsAffected = await _db.deleteTransaction(id);
+        
+        if (rowsAffected > 0) {
+          // إزالة من القائمة المحلية
+          _transactions.removeWhere((t) => t.id == id);
+          
+          // إجبار تحديث آخر العمليات
+          _forceUpdateRecentTransactions();
+          
+          // تحديث الكاش
+          _invalidateAllRelatedCache();
+          
+          // إعادة حساب الملخص
+          await calculateMonthlySummary();
+          
+          // إشعار فوري
+          notifyListeners();
+          
+          return true;
+        }
+        return false;
+      },
+      loadingMessage: 'جاري حذف المعاملة...',
+      successMessage: 'تم حذف المعاملة بنجاح',
+      context: context,
+    ) ?? false;
+  }
+
+  // ========== تحديث دوال الكاش ==========
+
+  /// إلغاء جميع الكاش المرتبط بالمعاملات
+  void _invalidateAllRelatedCache() {
+    _cache.invalidateRelatedCache('transactions');
+    _cache.invalidateRelatedCache('recent');
+    _cache.invalidateRelatedCache('monthly');
+    
+    // إلغاء كاش آخر العمليات
+    for (int i = 1; i <= 10; i++) {
+      _cache.remove('recent_$i');
+    }
+  }
+
+  // ========== تحديث دالة التحميل الأولي ==========
 
   /// تحميل البيانات الأولية مع معالجة الأخطاء
   Future<void> loadInitialData() async {
-    if (_transactions.isNotEmpty && !_isLoading) {
-      // البيانات محملة بالفعل
-      notifyListeners();
-      return;
-    }
+    if (_isLoading) return; // منع التحميل المتعدد
     
     _setLoading(true);
     
@@ -74,6 +230,9 @@ class TransactionProvider extends ChangeNotifier {
         _loadBudgets(),
         _loadCategories(),
       ]);
+      
+      // إجبار تحديث آخر العمليات
+      _forceUpdateRecentTransactions();
       
       // حساب الملخص فوراً
       await calculateMonthlySummary();
@@ -87,25 +246,48 @@ class TransactionProvider extends ChangeNotifier {
     }
   }
 
-  Future<List<TransactionModel>> loadRecentTransactionsImmediately() async {
+  /// تحميل المعاملات مع التخزين المؤقت
+  Future<void> _loadTransactions() async {
+    await _loadTransactionsWithCache();
+  }
+
+  Future<void> _loadBudgets() async {
+    await _loadBudgetsWithCache();
+  }
+
+  Future<void> _loadCategories() async {
+    await _loadCategoriesWithCache();
+  }
+
+  // ========== دالة تحميل سريع لآخر العمليات ==========
+
+  /// تحميل آخر العمليات بشكل فوري من قاعدة البيانات
+  Future<List<TransactionModel>> loadRecentTransactionsImmediately({int limit = 5}) async {
     try {
       final db = await _databaseHelper.database;
       final List<Map<String, dynamic>> maps = await db.query(
         'transactions',
         orderBy: 'createdAt DESC',
-        limit: 5,
+        limit: limit,
       );
       
       final transactions = maps.map((map) => TransactionModel.fromMap(map)).toList();
       
-      // تحديث الكاش
-      _cache.set('recent_5', transactions, ttl: const Duration(minutes: 1));
+      // تحديث الكاش المحلي
+      _recentTransactions = transactions;
+      _recentTransactionsNeedsUpdate = false;
+      
+      // تحديث الكاش العام
+      _cache.set('recent_$limit', transactions, ttl: const Duration(minutes: 1));
       
       return transactions;
     } catch (e) {
-      return [];
+      _errorHandler.logSimpleError('خطأ في تحميل آخر العمليات: $e');
+      return _recentTransactions.take(limit).toList();
     }
   }
+
+  // ========== باقي الدوال كما هي ==========
 
   /// حساب الملخص الشهري
   Future<void> calculateMonthlySummary() async {
@@ -204,29 +386,6 @@ class TransactionProvider extends ChangeNotifier {
     _categories = allCategories;
   }
 
-  /// تحميل المدن مع التخزين المؤقت
-  Future<void> _loadCitiesWithCache() async {
-    if (_enableCaching) {
-      final cached = _cache.get<List<CityModel>>('cities');
-      if (cached != null) {
-        _cities = cached;
-        return;
-      }
-    }
-    
-    final cities = await _errorHandler.handleDatabaseOperation(
-      () => _db.getAllCities(),
-      errorMessage: 'خطأ في تحميل المدن',
-    );
-    
-    if (cities != null) {
-      _cities = cities;
-      if (_enableCaching) {
-        _cache.set('cities', cities, ttl: const Duration(hours: 24));
-      }
-    }
-  }
-
   /// تحميل الميزانيات
   Future<void> _loadBudgetsWithCache() async {
     final budgets = await _errorHandler.handleDatabaseOperation(
@@ -237,150 +396,6 @@ class TransactionProvider extends ChangeNotifier {
     if (budgets != null) {
       _budgets = budgets;
     }
-  }
-
-  // ========== إدارة المعاملات ==========
-
-  /// إضافة معاملة جديدة مع معالجة شاملة للأخطاء
-  Future<bool> addTransaction(TransactionModel transaction, {BuildContext? context}) async {
-    return await _performOperation<bool>(
-      operation: () async {
-        // التحقق من صحة البيانات
-        _validateTransaction(transaction);
-        
-        // إدراج في قاعدة البيانات
-        final id = await _db.insertTransaction(transaction);
-        
-        if (id > 0) {
-          // تحديث الكاش
-          _cache.invalidateRelatedCache('transactions');
-          
-          // إعادة تحميل البيانات
-          await _loadTransactionsWithCache();
-          await calculateMonthlySummary();
-          
-          // التحقق من تجاوز الميزانية
-          if (transaction.type == 'expense') {
-            await _checkBudgetAlert(transaction.category, context);
-          }
-          
-          return true;
-        }
-        return false;
-      },
-      loadingMessage: 'جاري إضافة المعاملة...',
-      successMessage: 'تم إضافة المعاملة بنجاح',
-      context: context,
-    ) ?? false;
-  }
-
-  /// تحديث معاملة مع معالجة الأخطاء
-  Future<bool> updateTransaction(TransactionModel transaction, {BuildContext? context}) async {
-    return await _performOperation<bool>(
-      operation: () async {
-        _validateTransaction(transaction);
-        
-        final rowsAffected = await _db.updateTransaction(transaction);
-        
-        if (rowsAffected > 0) {
-          _cache.invalidateRelatedCache('transactions');
-          await _loadTransactionsWithCache();
-          await calculateMonthlySummary();
-          return true;
-        }
-        return false;
-      },
-      loadingMessage: 'جاري تحديث المعاملة...',
-      successMessage: 'تم تحديث المعاملة بنجاح',
-      context: context,
-    ) ?? false;
-  }
-
-  /// حذف معاملة مع معالجة الأخطاء
-  Future<bool> deleteTransaction(int id, {BuildContext? context}) async {
-    return await _performOperation<bool>(
-      operation: () async {
-        final rowsAffected = await _db.deleteTransaction(id);
-        
-        if (rowsAffected > 0) {
-          _cache.invalidateRelatedCache('transactions');
-          await _loadTransactionsWithCache();
-          await calculateMonthlySummary();
-          return true;
-        }
-        return false;
-      },
-      loadingMessage: 'جاري حذف المعاملة...',
-      successMessage: 'تم حذف المعاملة بنجاح',
-      context: context,
-    ) ?? false;
-  }
-
-  // ========== إدارة الفئات والمدن ==========
-
-  /// إضافة فئة جديدة
-  Future<bool> addCategory(String name, String type, {BuildContext? context}) async {
-    return await _performOperation<bool>(
-      operation: () async {
-        final category = CategoryModel(name: name, type: type);
-        final id = await _db.insertCategory(category);
-        
-        if (id > 0) {
-          _cache.invalidateRelatedCache('categories');
-          await _loadCategoriesWithCache();
-          return true;
-        }
-        return false;
-      },
-      loadingMessage: 'جاري إضافة الفئة...',
-      successMessage: 'تم إضافة الفئة بنجاح',
-      context: context,
-    ) ?? false;
-  }
-
-  /// إضافة مدينة جديدة
-  Future<bool> addCity(String name, {BuildContext? context}) async {
-    return await _performOperation<bool>(
-      operation: () async {
-        final city = CityModel(name: name);
-        final id = await _db.insertCity(city);
-        
-        if (id > 0) {
-          await _loadCitiesWithCache();
-          return true;
-        }
-        return false;
-      },
-      loadingMessage: 'جاري إضافة المدينة...',
-      successMessage: 'تم إضافة المدينة بنجاح',
-      context: context,
-    ) ?? false;
-  }
-
-  // ========== إدارة الميزانيات ==========
-
-  /// حفظ ميزانية مع معالجة الأخطاء
-  Future<bool> saveBudget(BudgetModel budget, {BuildContext? context}) async {
-    return await _performOperation<bool>(
-      operation: () async {
-        int result;
-        if (budget.id == null) {
-          result = await _db.insertBudget(budget);
-        } else {
-          result = await _db.updateBudget(budget);
-        }
-        
-        if (result > 0) {
-          _cache.invalidateRelatedCache('budgets');
-          await _loadBudgetsWithCache();
-          return true;
-        }
-        return false;
-      },
-      loadingMessage: 'جاري حفظ الميزانية...',
-      successMessage: 'تم حفظ الميزانية بنجاح',
-      context: context,
-    ) ?? false;
   }
 
   // ========== دوال مساعدة ==========
@@ -516,27 +531,7 @@ class TransactionProvider extends ChangeNotifier {
     }
   }
 
-  // ========== تغيير الشهر والفلترة ==========
-
-  /// تغيير الشهر المحدد مع إعادة تحميل البيانات
-  Future<void> changeMonth(DateTime month, {BuildContext? context}) async {
-    if (_selectedMonth.year == month.year && _selectedMonth.month == month.month) {
-      return;
-    }
-    
-    await _performOperation(
-      operation: () async {
-        _selectedMonth = month;
-        await _loadTransactionsWithCache();
-        await calculateMonthlySummary();
-      },
-      loadingMessage: 'جاري تحميل بيانات ${DateFormat('MMMM yyyy', 'ar').format(month)}...',
-      context: context,
-    );
-  }
-
-  // ========== دوال مساعدة موجودة مع تحسينات ==========
-
+  // باقي الدوال المساعدة...
   List<CategoryModel> getCategoriesByType(String type) {
     return _categories.where((cat) => cat.type == type).toList();
   }
@@ -556,21 +551,92 @@ class TransactionProvider extends ChangeNotifier {
     final spent = _monthlySummary?.expensesByCategory[category] ?? 0;
     if (budget.amount == 0) return 0;
     
-    return (spent / budget.amount).clamp(0.0, 2.0); // يسمح بتجاوز 200%
+    return (spent / budget.amount).clamp(0.0, 2.0);
   }
 
-  List<TransactionModel> getRecentTransactions({int limit = 5}) {
-    final cacheKey = 'recent_$limit';
-    final cached = _cache.get<List<TransactionModel>>(cacheKey);
-    if (cached != null) return cached;
+  /// تغيير الشهر المحدد مع إعادة تحميل البيانات
+  Future<void> changeMonth(DateTime month, {BuildContext? context}) async {
+    if (_selectedMonth.year == month.year && _selectedMonth.month == month.month) {
+      return;
+    }
     
-    final sorted = List<TransactionModel>.from(_transactions)
-      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-    
-    final recent = sorted.take(limit).toList();
-    _cache.set(cacheKey, recent, ttl: const Duration(minutes: 1));
-    
-    return recent;
+    await _performOperation(
+      operation: () async {
+        _selectedMonth = month;
+        await _loadTransactionsWithCache();
+        await calculateMonthlySummary();
+        
+        // تحديث آخر العمليات أيضاً
+        _forceUpdateRecentTransactions();
+      },
+      loadingMessage: 'جاري تحميل بيانات ${DateFormat('MMMM yyyy', 'ar').format(month)}...',
+      context: context,
+    );
+  }
+
+  // ========== الدوال المفقودة ==========
+
+  /// إضافة فئة جديدة
+  Future<bool> addCategory(String name, String type, {BuildContext? context}) async {
+    return await _performOperation<bool>(
+      operation: () async {
+        final category = CategoryModel(name: name, type: type);
+        final id = await _db.insertCategory(category);
+        
+        if (id > 0) {
+          _cache.invalidateRelatedCache('categories');
+          await _loadCategoriesWithCache();
+          return true;
+        }
+        return false;
+      },
+      loadingMessage: 'جاري إضافة الفئة...',
+      successMessage: 'تم إضافة الفئة بنجاح',
+      context: context,
+    ) ?? false;
+  }
+
+  /// إضافة مدينة جديدة
+  Future<bool> addCity(String name, {BuildContext? context}) async {
+    return await _performOperation<bool>(
+      operation: () async {
+        final city = CityModel(name: name);
+        final id = await _db.insertCity(city);
+        
+        if (id > 0) {
+          await _loadCitiesWithCache();
+          return true;
+        }
+        return false;
+      },
+      loadingMessage: 'جاري إضافة المدينة...',
+      successMessage: 'تم إضافة المدينة بنجاح',
+      context: context,
+    ) ?? false;
+  }
+
+  /// حفظ ميزانية مع معالجة الأخطاء
+  Future<bool> saveBudget(BudgetModel budget, {BuildContext? context}) async {
+    return await _performOperation<bool>(
+      operation: () async {
+        int result;
+        if (budget.id == null) {
+          result = await _db.insertBudget(budget);
+        } else {
+          result = await _db.updateBudget(budget);
+        }
+        
+        if (result > 0) {
+          _cache.invalidateRelatedCache('budgets');
+          await _loadBudgetsWithCache();
+          return true;
+        }
+        return false;
+      },
+      loadingMessage: 'جاري حفظ الميزانية...',
+      successMessage: 'تم حفظ الميزانية بنجاح',
+      context: context,
+    ) ?? false;
   }
 
   // ========== البحث والفلترة المتقدمة ==========
@@ -671,7 +737,33 @@ class TransactionProvider extends ChangeNotifier {
     return parts.join('_');
   }
 
-  // ========== إدارة الأداء والذاكرة ==========
+  /// تحميل المدن مع التخزين المؤقت
+  Future<void> _loadCitiesWithCache() async {
+    if (_enableCaching) {
+      final cached = _cache.get<List<CityModel>>('cities');
+      if (cached != null) {
+        _cities = cached;
+        return;
+      }
+    }
+    
+    final cities = await _errorHandler.handleDatabaseOperation(
+      () => _db.getAllCities(),
+      errorMessage: 'خطأ في تحميل المدن',
+    );
+    
+    if (cities != null) {
+      _cities = cities;
+      if (_enableCaching) {
+        _cache.set('cities', cities, ttl: const Duration(hours: 24));
+      }
+    }
+  }
+
+  /// تصفية الخطأ
+  void clearError() {
+    _clearError();
+  }
 
   /// تحسين الأداء حسب الشاشة
   Future<void> optimizeForScreen(String screenName) async {
@@ -697,11 +789,6 @@ class TransactionProvider extends ChangeNotifier {
   void performCleanup() {
     _cache.cleanupExpired();
     _errorHandler.clearErrorLog();
-  }
-
-  /// تصفية الخطأ
-  void clearError() {
-    _clearError();
   }
 
   @override

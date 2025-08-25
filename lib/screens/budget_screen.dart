@@ -8,6 +8,7 @@ import '../providers/transaction_provider.dart';
 import '../utils/app_colors.dart';
 import '../widgets/empty_state.dart';
 import '../utils/app_constants.dart';
+import '../utils/input_formatters.dart';
 
 class BudgetScreen extends StatefulWidget {
   const BudgetScreen({super.key});
@@ -441,7 +442,8 @@ class _BudgetScreenState extends State<BudgetScreen> {
                   controller: amountController,
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   inputFormatters: [
-                    FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
+                    EnglishNumbersOnlyFormatter(),
+                    LengthLimitingTextInputFormatter(10),
                   ],
                   decoration: InputDecoration(
                     labelText: 'المبلغ الشهري',
@@ -587,7 +589,8 @@ class _BudgetScreenState extends State<BudgetScreen> {
                   controller: amountController,
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   inputFormatters: [
-                    FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
+                    EnglishNumbersOnlyFormatter(),
+                    LengthLimitingTextInputFormatter(10),
                   ],
                   decoration: InputDecoration(
                     labelText: 'المبلغ الشهري',

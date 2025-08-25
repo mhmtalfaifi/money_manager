@@ -8,7 +8,7 @@ import '../models/transaction_model.dart';
 import '../providers/transaction_provider.dart';
 import '../utils/app_colors.dart';
 import '../utils/app_constants.dart';
-
+import '../utils/input_formatters.dart';
 class AddTransactionSheet extends StatefulWidget {
   final TransactionModel? transaction;
   
@@ -197,7 +197,8 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> with SingleTi
                   controller: _amountController,
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   inputFormatters: [
-                    FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
+                    EnglishNumbersOnlyFormatter(),
+                    LengthLimitingTextInputFormatter(10),
                   ],
                   decoration: InputDecoration(
                     labelText: 'المبلغ',
