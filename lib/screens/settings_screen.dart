@@ -12,6 +12,7 @@ import '../utils/app_constants.dart';
 import '../services/export_import_service.dart';
 import '../widgets/edit_name_dialog.dart'; // إضافة هذا الاستيراد
 import '../models/transaction_model.dart';
+import '../services/notification_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -233,6 +234,56 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ],
             ),
             
+
+            _buildSection(
+              title: 'الإشعارات والتنبيهات',
+              icon: Icons.notifications_active_rounded,
+              children: [
+                _buildSwitchItem(
+                  icon: Icons.notifications_outlined,
+                  title: 'الإشعارات العامة',
+                  subtitle: 'تفعيل جميع الإشعارات',
+                  value: _notificationsEnabled,
+                  onChanged: (value) {
+                    setState(() => _notificationsEnabled = value);
+                  },
+                ),
+                _buildSwitchItem(
+                  icon: Icons.notifications_active_rounded,
+                  title: 'تنبيهات الميزانية',
+                  subtitle: 'تنبيه عند تجاوز 80% من الميزانية',
+                  value: _budgetAlerts,
+                  onChanged: (value) {
+                    setState(() => _budgetAlerts = value);
+                  },
+                ),
+                _buildSettingsItem(
+                  icon: Icons.schedule_rounded,
+                  title: 'التذكير اليومي',
+                  subtitle: 'تذكير يومي لتسجيل المصروفات - 8:00 م',
+                  onTap: () => _showDailyReminderDialog(context),
+                ),
+                _buildSettingsItem(
+                  icon: Icons.calendar_month_rounded,
+                  title: 'تذكير الالتزامات الشهرية',
+                  subtitle: 'تذكير بالالتزامات في أول الشهر - 10:00 ص',
+                  onTap: () => _showMonthlyReminderDialog(context),
+                ),
+                _buildSettingsItem(
+                  icon: Icons.bug_report_rounded,
+                  title: 'اختبار الإشعارات',
+                  subtitle: 'إرسال إشعار تجريبي للتأكد من عمل النظام',
+                  color: Colors.blue,
+                  onTap: () => _testNotifications(context),
+                ),
+                _buildSettingsItem(
+                  icon: Icons.list_alt_rounded,
+                  title: 'الإشعارات المجدولة',
+                  subtitle: 'عرض قائمة الإشعارات المجدولة',
+                  onTap: () => _showScheduledNotifications(context),
+                ),
+              ],
+            ),
             // قسم البيانات
             _buildSection(
               title: 'البيانات',
@@ -1332,7 +1383,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         );
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.error,
+                        backgroundColor: AppColors.error, 
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -1352,4 +1403,481 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     );
   }
+  void _testNotifications(BuildContext context) async {
+  try {
+    // التحقق من حالة الإشعارات أولاً
+    final notificationService = NotificationService();
+    final isEnabled = await notificationService.areNotificationsEnabled();
+    
+    if (!isEnabled) {
+      _showNotificationPermissionDialog(context);
+      return;
+    }
+
+    // إرسال إشعار تجريبي
+    await notificationService.showTestNotification();
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle, color: Colors.white, size: 20),
+            const SizedBox(width: 12),
+            const Text('تم إرسال إشعار تجريبي'),
+          ],
+        ),
+        backgroundColor: Colors.green[600],
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('فشل إرسال الإشعار: $e'),
+        backgroundColor: Colors.red[600],
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
+}
+
+/// عرض الإشعارات المجدولة
+void _showScheduledNotifications(BuildContext context) async {
+  try {
+    final notificationService = NotificationService();
+    final pendingNotifications = await notificationService.getPendingNotifications();
+    
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Container(
+          constraints: const BoxConstraints(maxHeight: 500),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Row(
+                  children: [
+                    const Icon(Icons.schedule, color: AppColors.primary),
+                    const SizedBox(width: 12),
+                    const Text(
+                      'الإشعارات المجدولة',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (pendingNotifications.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.all(40),
+                  child: Column(
+                    children: [
+                      Icon(Icons.notifications_off, size: 48, color: Colors.grey),
+                      SizedBox(height: 16),
+                      Text('لا توجد إشعارات مجدولة'),
+                    ],
+                  ),
+                )
+              else
+                Flexible(
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: pendingNotifications.length,
+                    itemBuilder: (context, index) {
+                      final notification = pendingNotifications[index];
+                      return ListTile(
+                        leading: Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(
+                            Icons.notifications,
+                            color: AppColors.primary,
+                            size: 20,
+                          ),
+                        ),
+                        title: Text(notification.title ?? 'إشعار'),
+                        subtitle: Text(notification.body ?? ''),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.delete, color: Colors.red),
+                          onPressed: () async {
+                            await notificationService.cancelNotification(notification.id);
+                            Navigator.pop(context);
+                            _showScheduledNotifications(context);
+                          },
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text('إغلاق'),
+                      ),
+                    ),
+                    if (pendingNotifications.isNotEmpty) ...[
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () async {
+                            await notificationService.cancelAllNotifications();
+                            Navigator.pop(context);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('تم إلغاء جميع الإشعارات المجدولة'),
+                                backgroundColor: AppColors.primary,
+                              ),
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text(
+                            'إلغاء الكل',
+                            style: TextStyle(color: Colors.white),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('خطأ في جلب الإشعارات: $e'),
+        backgroundColor: Colors.red[600],
+      ),
+    );
+  }
+}
+
+/// حوار إعداد التذكير اليومي
+void _showDailyReminderDialog(BuildContext context) {
+  int selectedHour = 20; // 8 PM
+  int selectedMinute = 0;
+  
+  showDialog(
+    context: context,
+    builder: (context) => StatefulBuilder(
+      builder: (context, setState) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'إعداد التذكير اليومي',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  Column(
+                    children: [
+                      const Text('الساعة'),
+                      DropdownButton<int>(
+                        value: selectedHour,
+                        items: List.generate(24, (i) => DropdownMenuItem(
+                          value: i,
+                          child: Text(i.toString().padLeft(2, '0')),
+                        )),
+                        onChanged: (value) {
+                          if (value != null) {
+                            setState(() => selectedHour = value);
+                          }
+                        },
+                      ),
+                    ],
+                  ),
+                  Column(
+                    children: [
+                      const Text('الدقيقة'),
+                      DropdownButton<int>(
+                        value: selectedMinute,
+                        items: [0, 15, 30, 45].map((i) => DropdownMenuItem(
+                          value: i,
+                          child: Text(i.toString().padLeft(2, '0')),
+                        )).toList(),
+                        onChanged: (value) {
+                          if (value != null) {
+                            setState(() => selectedMinute = value);
+                          }
+                        },
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('إلغاء'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        try {
+                          await NotificationService().scheduleDailyReminder(
+                            hour: selectedHour,
+                            minute: selectedMinute,
+                          );
+                          Navigator.pop(context);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('تم تفعيل التذكير اليومي للساعة ${selectedHour.toString().padLeft(2, '0')}:${selectedMinute.toString().padLeft(2, '0')}'),
+                              backgroundColor: Colors.green[600],
+                            ),
+                          );
+                        } catch (e) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('فشل في تفعيل التذكير: $e'),
+                              backgroundColor: Colors.red[600],
+                            ),
+                          );
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                      ),
+                      child: const Text('حفظ', style: TextStyle(color: Colors.white)),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+/// حوار إعداد تذكير الالتزامات الشهرية
+void _showMonthlyReminderDialog(BuildContext context) {
+  int selectedDay = 1;
+  int selectedHour = 10;
+  int selectedMinute = 0;
+  
+  showDialog(
+    context: context,
+    builder: (context) => StatefulBuilder(
+      builder: (context, setState) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'إعداد تذكير الالتزامات الشهرية',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  Column(
+                    children: [
+                      const Text('اليوم'),
+                      DropdownButton<int>(
+                        value: selectedDay,
+                        items: List.generate(28, (i) => DropdownMenuItem(
+                          value: i + 1,
+                          child: Text((i + 1).toString()),
+                        )),
+                        onChanged: (value) {
+                          if (value != null) {
+                            setState(() => selectedDay = value);
+                          }
+                        },
+                      ),
+                    ],
+                  ),
+                  Column(
+                    children: [
+                      const Text('الساعة'),
+                      DropdownButton<int>(
+                        value: selectedHour,
+                        items: List.generate(24, (i) => DropdownMenuItem(
+                          value: i,
+                          child: Text(i.toString().padLeft(2, '0')),
+                        )),
+                        onChanged: (value) {
+                          if (value != null) {
+                            setState(() => selectedHour = value);
+                          }
+                        },
+                      ),
+                    ],
+                  ),
+                  Column(
+                    children: [
+                      const Text('الدقيقة'),
+                      DropdownButton<int>(
+                        value: selectedMinute,
+                        items: [0, 15, 30, 45].map((i) => DropdownMenuItem(
+                          value: i,
+                          child: Text(i.toString().padLeft(2, '0')),
+                        )).toList(),
+                        onChanged: (value) {
+                          if (value != null) {
+                            setState(() => selectedMinute = value);
+                          }
+                        },
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('إلغاء'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        try {
+                          await NotificationService().scheduleMonthlyCommitmentsReminder(
+                            day: selectedDay,
+                            hour: selectedHour,
+                            minute: selectedMinute,
+                          );
+                          Navigator.pop(context);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('تم تفعيل تذكير الالتزامات لليوم $selectedDay من كل شهر الساعة ${selectedHour.toString().padLeft(2, '0')}:${selectedMinute.toString().padLeft(2, '0')}'),
+                              backgroundColor: Colors.green[600],
+                            ),
+                          );
+                        } catch (e) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('فشل في تفعيل التذكير: $e'),
+                              backgroundColor: Colors.red[600],
+                            ),
+                          );
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                      ),
+                      child: const Text('حفظ', style: TextStyle(color: Colors.white)),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+/// حوار طلب أذونات الإشعارات
+void _showNotificationPermissionDialog(BuildContext context) {
+  showDialog(
+    context: context,
+    builder: (context) => Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.notifications_off,
+              size: 48,
+              color: Colors.orange,
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'أذونات الإشعارات',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'لم يتم منح أذونات الإشعارات للتطبيق.\nيرجى تفعيل الإشعارات من إعدادات الجهاز.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey),
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text(
+                  'موافق',
+                  style: TextStyle(color: Colors.white),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
 }

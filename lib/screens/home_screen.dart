@@ -6,30 +6,19 @@ import 'package:flutter/services.dart';
 import '../providers/transaction_provider.dart';
 import '../providers/user_provider.dart';
 import '../utils/app_colors.dart';
+import '../utils/app_constants.dart';
 import '../models/transaction_model.dart';
 import 'add_transaction.dart';
 import 'history_screen.dart';
 import 'reports_screen.dart';
 import 'settings_screen.dart';
 import 'dart:math' as math;
-// أضف هذا الاستيراد
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
-}
-
-// دالة مساعدة لتنسيق العملة
-String _formatCurrency(double amount) {
-  if (amount >= 1000000) {
-    return '${(amount / 1000000).toStringAsFixed(1)}م';
-  } else if (amount >= 1000) {
-    return '${(amount / 1000).toStringAsFixed(1)}ك';
-  } else {
-    return amount.toStringAsFixed(0);
-  }
 }
 
 class _HomeScreenState extends State<HomeScreen> 
@@ -47,14 +36,13 @@ class _HomeScreenState extends State<HomeScreen>
   ];
 
   @override
-  bool get wantKeepAlive => true; // للحفاظ على حالة الشاشة
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
     super.initState();
     _setupAnimations();
     
-    // تحميل البيانات الأولية بعد بناء الويدجت
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadInitialDataSafely();
     });
@@ -82,7 +70,6 @@ class _HomeScreenState extends State<HomeScreen>
       final transactionProvider = context.read<TransactionProvider>();
       final userProvider = context.read<UserProvider>();
       
-      // تحميل البيانات فقط إذا لم تكن محملة
       final futures = <Future>[];
       
       if (transactionProvider.transactions.isEmpty) {
@@ -98,7 +85,6 @@ class _HomeScreenState extends State<HomeScreen>
       }
     } catch (e) {
       debugPrint('خطأ في تحميل البيانات الأولية: $e');
-      // يمكن إضافة معالجة إضافية للخطأ هنا
     }
   }
 
@@ -109,7 +95,7 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   void _onTabTapped(int index) {
-    if (_currentIndex == index) return; // منع الضغط المتكرر
+    if (_currentIndex == index) return;
     
     HapticFeedback.lightImpact();
     setState(() {
@@ -119,7 +105,7 @@ class _HomeScreenState extends State<HomeScreen>
 
   @override
   Widget build(BuildContext context) {
-    super.build(context); // مطلوب لـ AutomaticKeepAliveClientMixin
+    super.build(context);
     
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -357,7 +343,7 @@ class _DashboardScreenState extends State<DashboardScreen>
 
   Widget _buildMainContent(TransactionProvider transactionProvider, UserProvider userProvider) {
     final summary = transactionProvider.monthlySummary;
-    final recentTransactions = transactionProvider.getRecentTransactions(limit: 3);
+    final recentTransactions = transactionProvider.getRecentTransactions(limit: 5);
     
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
@@ -367,15 +353,17 @@ class _DashboardScreenState extends State<DashboardScreen>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildHeader(userProvider, transactionProvider),
-            const SizedBox(height: 32),
-            _buildSummaryCards(summary),
-            const SizedBox(height: 32),
+            const SizedBox(height: 24),
+            _buildQuickActions(),
+            const SizedBox(height: 24),
+            _buildFinancialSummary(summary),
+            const SizedBox(height: 24),
+            _buildMonthlyOverview(summary),
+            const SizedBox(height: 24),
             _buildEhsanCard(),
-            const SizedBox(height: 32),
-            _buildMonthlyBalance(summary),
-            const SizedBox(height: 32),
+            const SizedBox(height: 24),
             _buildRecentTransactionsSection(recentTransactions),
-            const SizedBox(height: 100), // مساحة للزر العائم
+            const SizedBox(height: 100),
           ],
         ),
       ),
@@ -383,80 +371,584 @@ class _DashboardScreenState extends State<DashboardScreen>
   }
 
   Widget _buildHeader(UserProvider userProvider, TransactionProvider transactionProvider) {
-    return Row(
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              AnimatedSwitcher(
-                duration: const Duration(milliseconds: 300),
-                child: Text(
-                  'مرحباً، ${userProvider.userName.isNotEmpty ? userProvider.userName : 'مستخدم'}',
-                  key: ValueKey(userProvider.userName),
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            AppColors.primary,
+            AppColors.primary.withOpacity(0.8),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withOpacity(0.3),
+            blurRadius: 15,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 300),
+                  child: Text(
+                    'مرحباً، ${userProvider.userName.isNotEmpty ? userProvider.userName : 'مستخدم'}',
+                    key: ValueKey(userProvider.userName),
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
+                const SizedBox(height: 8),
+                Text(
+                  DateFormat('MMMM yyyy', 'ar').format(transactionProvider.selectedMonth),
+                  style: const TextStyle(
+                    fontSize: 16,
+                    color: Colors.white70,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'إدارة ذكية لأموالك',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.white.withOpacity(0.8),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            width: 60,
+            height: 60,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: const Icon(
+              Icons.account_balance_wallet_rounded,
+              color: Colors.white,
+              size: 28,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickActions() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'إجراءات سريعة',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: _buildQuickActionButton(
+                  icon: Icons.arrow_downward_rounded,
+                  label: 'إضافة دخل',
+                  color: AppColors.income,
+                  onTap: () => _showAddTransactionType('income'),
+                ),
               ),
-              const SizedBox(height: 4),
-              Text(
-                DateFormat('MMMM yyyy', 'ar').format(transactionProvider.selectedMonth),
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: AppColors.textSecondary,
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildQuickActionButton(
+                  icon: Icons.arrow_upward_rounded,
+                  label: 'إضافة مصروف',
+                  color: AppColors.expense,
+                  onTap: () => _showAddTransactionType('expense'),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildQuickActionButton(
+                  icon: Icons.event_repeat_rounded,
+                  label: 'إضافة التزام',
+                  color: AppColors.commitment,
+                  onTap: () => _showAddTransactionType('commitment'),
                 ),
               ),
             ],
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickActionButton({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: color.withOpacity(0.2),
+            width: 1,
+          ),
+        ),
+        child: Column(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, color: color, size: 20),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: color,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFinancialSummary(MonthlySummary? summary) {
+    if (summary == null) return const SizedBox.shrink();
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'الملخص المالي',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Expanded(
+                child: _buildSummaryItem(
+                  title: 'إجمالي الدخل',
+                  amount: summary.totalIncome,
+                  icon: Icons.trending_up_rounded,
+                  color: AppColors.income,
+                ),
+              ),
+              Container(
+                width: 1,
+                height: 60,
+                color: Colors.grey[200],
+                margin: const EdgeInsets.symmetric(horizontal: 16),
+              ),
+              Expanded(
+                child: _buildSummaryItem(
+                  title: 'إجمالي الصرف',
+                  amount: summary.totalExpenses + summary.totalCommitments,
+                  icon: Icons.trending_down_rounded,
+                  color: AppColors.expense,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: summary.netIncome >= 0
+                    ? [AppColors.income.withOpacity(0.1), AppColors.income.withOpacity(0.05)]
+                    : [AppColors.error.withOpacity(0.1), AppColors.error.withOpacity(0.05)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: summary.netIncome >= 0 
+                    ? AppColors.income.withOpacity(0.3)
+                    : AppColors.error.withOpacity(0.3),
+                width: 1,
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: summary.netIncome >= 0 
+                        ? AppColors.income.withOpacity(0.2)
+                        : AppColors.error.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    summary.netIncome >= 0 
+                        ? Icons.account_balance_wallet_rounded
+                        : Icons.warning_rounded,
+                    color: summary.netIncome >= 0 ? AppColors.income : AppColors.error,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        summary.netIncome >= 0 ? 'صافي الربح' : 'العجز المالي',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        AppConstants.formatMoney(summary.netIncome.abs()),
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: summary.netIncome >= 0 ? AppColors.income : AppColors.error,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (summary.totalIncome > 0)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: summary.netIncome >= 0 
+                          ? AppColors.income.withOpacity(0.1)
+                          : AppColors.error.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      '${(summary.netIncome / summary.totalIncome * 100).toStringAsFixed(1)}%',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: summary.netIncome >= 0 ? AppColors.income : AppColors.error,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSummaryItem({
+    required String title,
+    required double amount,
+    required IconData icon,
+    required Color color,
+  }) {
+    return Column(
+      children: [
+        Container(
+          width: 48,
+          height: 48,
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(icon, color: color, size: 24),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 12,
+            color: AppColors.textSecondary,
+          ),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 4),
+        Text(
+          AppConstants.formatCompactMoney(amount),
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+          textAlign: TextAlign.center,
         ),
       ],
     );
   }
 
-  Widget _buildSummaryCards(MonthlySummary? summary) {
-    return Column(
-      children: [
-        // الدخل
-        _buildSummaryCard(
-          title: 'الدخل',
-          amount: summary?.totalIncome ?? 0,
-          color: AppColors.incomeLight,
-          icon: Icons.arrow_downward_rounded,
-          iconColor: AppColors.income,
-        ),
-        
-        const SizedBox(height: 12),
-        
-        // الالتزامات والمصروفات
-        Row(
-          children: [
-            Expanded(
-              child: _buildCommitmentCard(
-                title: 'الالتزامات',
-                amount: summary?.totalCommitments ?? 0,
-                percentage: summary != null && summary.totalIncome > 0
-                    ? (summary.totalCommitments / summary.totalIncome * 100)
-                    : 0,
-                color: AppColors.commitmentLight,
-                iconColor: AppColors.commitment,
+  Widget _buildMonthlyOverview(MonthlySummary? summary) {
+    if (summary == null) return const SizedBox.shrink();
+
+    final savingsRate = summary.savingsRate;
+    final expenseRate = summary.expenseRate;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'نظرة شهرية',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildExpenseCard(
-                title: 'المصروفات',
-                amount: summary?.totalExpenses ?? 0,
-                color: AppColors.expenseLight,
-                icon: Icons.show_chart_rounded,
-                iconColor: AppColors.expense,
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  DateFormat('MMM yyyy', 'ar').format(summary.month),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.primary,
+                  ),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Expanded(
+                child: _buildOverviewMetric(
+                  title: 'معدل الإدخار',
+                  value: '${savingsRate.toStringAsFixed(1)}%',
+                  icon: Icons.savings_rounded,
+                  color: AppColors.success,
+                  progress: savingsRate / 100,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _buildOverviewMetric(
+                  title: 'معدل الإنفاق',
+                  value: '${expenseRate.toStringAsFixed(1)}%',
+                  icon: Icons.trending_up_rounded,
+                  color: expenseRate > 80 ? AppColors.error : AppColors.warning,
+                  progress: expenseRate / 100,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: _buildDetailMetric(
+                  title: 'متوسط يومي',
+                  value: AppConstants.formatMoney((summary.totalExpenses + summary.totalCommitments) / 30),
+                  icon: Icons.calendar_today_rounded,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _buildDetailMetric(
+                  title: 'المتبقي',
+                  value: AppConstants.formatCompactMoney(summary.remainingBalance),
+                  icon: Icons.account_balance_rounded,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOverviewMetric({
+    required String title,
+    required String value,
+    required IconData icon,
+    required Color color,
+    required double progress,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: color.withOpacity(0.2),
+          width: 1,
         ),
-      ],
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, color: color, size: 18),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    Text(
+                      value,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: color,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          LinearProgressIndicator(
+            value: progress > 1 ? 1 : progress,
+            backgroundColor: color.withOpacity(0.1),
+            valueColor: AlwaysStoppedAnimation<Color>(color),
+            borderRadius: BorderRadius.circular(4),
+            minHeight: 6,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailMetric({
+    required String title,
+    required String value,
+    required IconData icon,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, color: AppColors.primary, size: 16),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 10,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -466,7 +958,7 @@ class _DashboardScreenState extends State<DashboardScreen>
       borderRadius: BorderRadius.circular(20),
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(20),
           gradient: const LinearGradient(
@@ -492,7 +984,7 @@ class _DashboardScreenState extends State<DashboardScreen>
               height: 60,
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(16),
               ),
               child: const Icon(
                 Icons.volunteer_activism,
@@ -508,17 +1000,25 @@ class _DashboardScreenState extends State<DashboardScreen>
                   Text(
                     'ساهم في الخير',
                     style: TextStyle(
-                      fontSize: 18,
+                      fontSize: 20,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
                     ),
                   ),
-                  SizedBox(height: 4),
+                  SizedBox(height: 6),
                   Text(
-                    'تبرع عبر منصة إحسان',
+                    'تبرع عبر منصة إحسان الرسمية',
                     style: TextStyle(
                       fontSize: 14,
                       color: Colors.white70,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    'وزارة الموارد البشرية والتنمية الاجتماعية',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Colors.white60,
                     ),
                   ),
                 ],
@@ -531,117 +1031,6 @@ class _DashboardScreenState extends State<DashboardScreen>
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildMonthlyBalance(MonthlySummary? summary) {
-    final balance = summary?.remainingBalance ?? 0;
-    final progress = summary != null && summary.totalIncome > 0
-        ? (balance / summary.totalIncome).clamp(0.0, 1.0)
-        : 0.0;
-
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: AppColors.primary.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(
-              Icons.account_balance_wallet_rounded,
-              color: AppColors.primary,
-              size: 24,
-            ),
-          ),
-          const SizedBox(width: 16),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'الميزانية الشهرية',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-                Text(
-                  'المتبقي من الدخل',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textLight,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                _formatCurrency(balance),
-                style: const TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              const Text(
-                'ريال',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(width: 16),
-          // دائرة التقدم
-          SizedBox(
-            width: 80,
-            height: 80,
-            child: Stack(
-              children: [
-                CustomPaint(
-                  size: const Size(80, 80),
-                  painter: CircleProgressPainter(
-                    progress: progress,
-                    backgroundColor: AppColors.progressGray,
-                    progressColor: AppColors.progressGreen,
-                  ),
-                ),
-                Positioned.fill(
-                  child: Center(
-                    child: Text(
-                      '${(progress * 100).toStringAsFixed(0)}%',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.progressGreen,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -662,13 +1051,14 @@ class _DashboardScreenState extends State<DashboardScreen>
               ),
             ),
             if (recentTransactions.isNotEmpty)
-              TextButton(
+              TextButton.icon(
                 onPressed: _navigateToHistory,
-                child: const Text(
-                  'عرض الكل',
-                  style: TextStyle(
+                icon: const Icon(Icons.arrow_forward_ios_rounded, size: 16),
+                label: const Text('عرض الكل'),
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.primary,
+                  textStyle: const TextStyle(
                     fontSize: 14,
-                    color: AppColors.primary,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -758,6 +1148,17 @@ class _DashboardScreenState extends State<DashboardScreen>
     homeState?._onTabTapped(2);
   }
 
+  void _showAddTransactionType(String type) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => AddTransactionSheet(
+        initialType: type,
+      ),
+    );
+  }
+
   void _showTransactionDetails(TransactionModel transaction) {
     showDialog(
       context: context,
@@ -769,10 +1170,11 @@ class _DashboardScreenState extends State<DashboardScreen>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildDetailRow('الوصف', transaction.description),
-            _buildDetailRow('المبلغ', _formatCurrency(transaction.amount)),
+            _buildDetailRow('المبلغ', AppConstants.formatMoney(transaction.amount)),
             _buildDetailRow('الفئة', transaction.category),
             _buildDetailRow('المدينة', transaction.city),
             _buildDetailRow('التاريخ', DateFormat('yyyy/MM/dd').format(transaction.date)),
+            _buildDetailRow('النوع', AppConstants.getTypeText(transaction.type)),
           ],
         ),
         actions: [
@@ -842,271 +1244,6 @@ class _DashboardScreenState extends State<DashboardScreen>
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
-  }
-
-  // دوال بناء الكروت
-  Widget _buildSummaryCard({
-    required String title,
-    required double amount,
-    required Color color,
-    required IconData icon,
-    required Color iconColor,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: color,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(icon, color: iconColor, size: 24),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  _formatCurrency(amount),
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCommitmentCard({
-    required String title,
-    required double amount,
-    required double percentage,
-    required Color color,
-    required Color iconColor,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: color,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(
-                  Icons.event_repeat_rounded,
-                  color: iconColor,
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      _formatCurrency(amount),
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          if (percentage > 0) ...[
-            const SizedBox(height: 8),
-            LinearProgressIndicator(
-              value: percentage / 100,
-              backgroundColor: AppColors.progressGray,
-              valueColor: AlwaysStoppedAnimation<Color>(
-                percentage > 80 ? AppColors.error : AppColors.commitment,
-              ),
-              minHeight: 4,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              '${percentage.toStringAsFixed(0)}% من الدخل',
-              style: TextStyle(
-                fontSize: 11,
-                color: percentage > 80 ? AppColors.error : AppColors.textLight,
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildExpenseCard({
-    required String title,
-    required double amount,
-    required Color color,
-    required IconData icon,
-    required Color iconColor,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: color,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(icon, color: iconColor, size: 20),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      _formatCurrency(amount),
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// Custom Painter للدائرة التقدمية
-class CircleProgressPainter extends CustomPainter {
-  final double progress;
-  final Color backgroundColor;
-  final Color progressColor;
-  
-  CircleProgressPainter({
-    required this.progress,
-    required this.backgroundColor,
-    required this.progressColor,
-  });
-  
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    final radius = size.width / 2;
-    
-    // دائرة الخلفية
-    final backgroundPaint = Paint()
-      ..color = backgroundColor
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 8
-      ..strokeCap = StrokeCap.round;
-    
-    canvas.drawCircle(center, radius - 4, backgroundPaint);
-    
-    // قوس التقدم
-    if (progress > 0) {
-      final progressPaint = Paint()
-        ..color = progressColor
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 8
-        ..strokeCap = StrokeCap.round;
-      
-      final progressAngle = 2 * math.pi * progress;
-      canvas.drawArc(
-        Rect.fromCircle(center: center, radius: radius - 4),
-        -math.pi / 2,
-        progressAngle,
-        false,
-        progressPaint,
-      );
-    }
-  }
-  
-  @override
-  bool shouldRepaint(CircleProgressPainter oldDelegate) {
-    return oldDelegate.progress != progress ||
-           oldDelegate.backgroundColor != backgroundColor ||
-           oldDelegate.progressColor != progressColor;
   }
 }
 
@@ -1183,32 +1320,27 @@ class TransactionItem extends StatelessWidget {
                       const SizedBox(height: 4),
                       Row(
                         children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: typeConfig.iconColor.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              AppConstants.getTypeText(transaction.type),
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w500,
+                                color: typeConfig.iconColor,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
                           Text(
                             transaction.category,
                             style: const TextStyle(
                               fontSize: 12,
                               color: AppColors.textSecondary,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Container(
-                            width: 4,
-                            height: 4,
-                            decoration: const BoxDecoration(
-                              color: AppColors.textLight,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              transaction.city,
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: AppColors.textSecondary,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],
@@ -1221,7 +1353,7 @@ class TransactionItem extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
-                      _formatCurrency(transaction.amount),
+                      AppConstants.formatCompactMoney(transaction.amount),
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,

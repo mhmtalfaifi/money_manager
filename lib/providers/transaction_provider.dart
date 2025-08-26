@@ -8,6 +8,8 @@ import '../services/error_handler_service.dart';
 import '../services/cache_service.dart';
 import '../services/memory_manager_service.dart';
 import 'package:intl/intl.dart';
+import '../services/notification_service.dart'; // إضافة هذا الاستيراد في أعلى الملف
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 class TransactionProvider extends ChangeNotifier {
   final DatabaseHelper _db = DatabaseHelper.instance;
@@ -15,6 +17,7 @@ class TransactionProvider extends ChangeNotifier {
   final CacheService _cache = CacheService();
   final MemoryManagerService _memoryManager = MemoryManagerService();
   final DatabaseHelper _databaseHelper = DatabaseHelper.instance;
+  final NotificationService _notificationService = NotificationService(); 
 
   // البيانات
   List<TransactionModel> _transactions = [];
@@ -498,10 +501,14 @@ class TransactionProvider extends ChangeNotifier {
       if (budget == null) return;
       
       final progress = getCategoryBudgetProgress(category);
+      final percentage = progress * 100;
       
       if (progress >= 0.8) {
+        // إرسال إشعار فوري
+        await _notificationService.showBudgetAlert(category, percentage);
+        
+        // إظهار SnackBar أيضاً إذا كان هناك context
         if (context != null) {
-          final percentage = progress * 100;
           String message = percentage >= 100
               ? 'تجاوزت ميزانية "$category" بنسبة ${(percentage - 100).toStringAsFixed(0)}%'
               : 'اقتربت من حد ميزانية "$category" (${percentage.toStringAsFixed(0)}%)';
@@ -531,6 +538,84 @@ class TransactionProvider extends ChangeNotifier {
       _errorHandler.logSimpleError('خطأ في فحص الميزانية: $e');
     }
   }
+
+  Future<void> checkGoalProgress(String goalName, double currentAmount, double targetAmount) async {
+    try {
+      final progress = (currentAmount / targetAmount * 100).clamp(0, 100);
+      
+      // إرسال إشعار عند الوصول لمعالم مهمة (25%, 50%, 75%, 100%)
+      if (progress >= 25 && progress < 26) {
+        await _notificationService.showGoalProgress(goalName, 25);
+      } else if (progress >= 50 && progress < 51) {
+        await _notificationService.showGoalProgress(goalName, 50);
+      } else if (progress >= 75 && progress < 76) {
+        await _notificationService.showGoalProgress(goalName, 75);
+      } else if (progress >= 100) {
+        await _notificationService.showGoalProgress(goalName, 100);
+      }
+    } catch (e) {
+      _errorHandler.logSimpleError('خطأ في فحص تقدم الهدف: $e');
+    }
+  }
+
+  Future<void> sendTestNotification() async {
+    try {
+      await _notificationService.showTestNotification();
+    } catch (e) {
+      _errorHandler.logSimpleError('خطأ في إرسال إشعار الاختبار: $e');
+    }
+  }
+
+  Future<bool> areNotificationsEnabled() async {
+    try {
+      return await _notificationService.areNotificationsEnabled();
+    } catch (e) {
+      _errorHandler.logSimpleError('خطأ في فحص حالة الإشعارات: $e');
+      return false;
+    }
+  }
+
+  Future<List<PendingNotificationRequest>> getPendingNotifications() async {
+    try {
+      return await _notificationService.getPendingNotifications();
+    } catch (e) {
+      _errorHandler.logSimpleError('خطأ في جلب الإشعارات المجدولة: $e');
+      return [];
+    }
+  }
+
+Future<void> scheduleDailyReminder({int hour = 20, int minute = 0}) async {
+    try {
+      await _notificationService.scheduleDailyReminder(hour: hour, minute: minute);
+    } catch (e) {
+      _errorHandler.logSimpleError('خطأ في جدولة التذكير اليومي: $e');
+    }
+  }
+
+  Future<void> scheduleMonthlyCommitmentsReminder({
+    int day = 1,
+    int hour = 10,
+    int minute = 0
+  }) async {
+    try {
+      await _notificationService.scheduleMonthlyCommitmentsReminder(
+        day: day,
+        hour: hour,
+        minute: minute,
+      );
+    } catch (e) {
+      _errorHandler.logSimpleError('خطأ في جدولة تذكير الالتزامات: $e');
+    }
+  }
+
+   Future<void> cancelAllNotifications() async {
+    try {
+      await _notificationService.cancelAllNotifications();
+    } catch (e) {
+      _errorHandler.logSimpleError('خطأ في إلغاء الإشعارات: $e');
+    }
+  }
+  
 
   // باقي الدوال المساعدة...
   List<CategoryModel> getCategoriesByType(String type) {

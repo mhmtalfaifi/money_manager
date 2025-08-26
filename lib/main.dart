@@ -1,4 +1,4 @@
-// main.dart
+// main.dart - مُحدث مع تهيئة خدمة الإشعارات
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -11,6 +11,7 @@ import 'helpers/database_helper.dart';
 import 'providers/transaction_provider.dart';
 import 'providers/user_provider.dart';
 import 'services/user_service.dart';
+import 'services/notification_service.dart'; // إضافة خدمة الإشعارات
 
 void main() async {
   // التأكد من تهيئة Flutter
@@ -41,6 +42,12 @@ Future<void> _initializeServices() async {
     // تهيئة خدمة المستخدم
     await UserService().loadUserName();
     await UserService().updateLastLogin();
+    
+    // تهيئة خدمة الإشعارات - هذا مهم جداً!
+    await NotificationService().initialize();
+    
+    // إعداد التذكيرات الافتراضية بعد التهيئة
+    await NotificationService().setupDefaultReminders();
     
     if (kDebugMode) {
       debugPrint('✅ All services initialized successfully');
@@ -223,7 +230,8 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       ),
     );
   }
-  }
+}
+
 /// غلاف التطبيق الذي يقرر أي شاشة يعرض
 class AppWrapper extends StatefulWidget {
   const AppWrapper({super.key});

@@ -7,8 +7,9 @@ environment:
   sdk: '>=3.0.0 <4.0.0'
 
 dependencies:
+  permission_handler: ^12.0.1
   device_info: ^2.0.0
-  csv: ^5.0.2
+  csv: ^6.0.0
   flutter:
     sdk: flutter
   flutter_localizations:
@@ -39,6 +40,7 @@ dependencies:
   flutter_local_notifications: ^19.4.0
   timezone: ^0.10.1
   
+  
   # التصدير والاستيراد والمشاركة
   syncfusion_flutter_xlsio: ^30.2.6
   file_picker: ^10.3.2
@@ -64,6 +66,8 @@ flutter:
 
     assets:
     - assets/images/Ehsan-Logo.svg
+    - assets/
+    - assets/icons/
   # الأصول
     fonts:
     - family: Amiri
