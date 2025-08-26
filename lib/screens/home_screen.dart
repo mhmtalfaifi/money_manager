@@ -12,6 +12,7 @@ import 'history_screen.dart';
 import 'reports_screen.dart';
 import 'settings_screen.dart';
 import 'dart:math' as math;
+// أضف هذا الاستيراد
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});

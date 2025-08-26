@@ -229,6 +229,7 @@ class TransactionProvider extends ChangeNotifier {
         _loadTransactions(),
         _loadBudgets(),
         _loadCategories(),
+        _loadCitiesWithCache(),
       ]);
       
       // إجبار تحديث آخر العمليات
